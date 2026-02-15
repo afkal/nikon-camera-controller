@@ -8,11 +8,14 @@ from typing import Any
 
 import gphoto2 as gp
 
+from app.camera.capabilities import CameraCapabilities
 from app.camera.exceptions import (
     CameraAlreadyConnectedError,
     CameraConnectionError,
     CameraNotConnectedError,
+    InvalidSettingError,
 )
+from app.camera.settings import CameraSettings
 
 logger = logging.getLogger(__name__)
 
@@ -153,6 +156,157 @@ class CameraController:
             logger.warning("Error reading camera status: %s", e.string)
 
         return status
+
+    # --- gPhoto2 config key mapping ---
+    # Maps our field names to gPhoto2 config widget names.
+    _SETTING_KEYS: dict[str, str] = {
+        "iso": "iso",
+        "shutter_speed": "shutterspeed",
+        "aperture": "f-number",
+        "exposure_compensation": "exposurecompensation",
+        "white_balance": "whitebalance",
+        "focus_mode": "focusmode",
+        "exposure_program": "expprogram",
+    }
+
+    def get_settings(self) -> CameraSettings:
+        """Read current camera settings from gPhoto2.
+
+        Returns:
+            CameraSettings with current values.
+
+        Raises:
+            CameraNotConnectedError: If no camera connected.
+        """
+        self._require_connected()
+        assert self._camera is not None
+
+        config = self._camera.get_config()
+        values: dict[str, str] = {}
+
+        for field_name, gp_key in self._SETTING_KEYS.items():
+            try:
+                widget = config.get_child_by_name(gp_key)
+                values[field_name] = str(widget.get_value())
+            except gp.GPhoto2Error:
+                logger.debug("Setting %s not available", gp_key)
+
+        return CameraSettings.from_dict(values)
+
+    def get_capabilities(self) -> CameraCapabilities:
+        """Query supported values for each setting from the camera.
+
+        Returns:
+            CameraCapabilities with lists of valid values.
+
+        Raises:
+            CameraNotConnectedError: If no camera connected.
+        """
+        self._require_connected()
+        assert self._camera is not None
+
+        config = self._camera.get_config()
+
+        def _choices(gp_key: str) -> list[str]:
+            """Get available choices for a RADIO/MENU widget."""
+            try:
+                widget = config.get_child_by_name(gp_key)
+                return [
+                    widget.get_choice(i)
+                    for i in range(widget.count_choices())
+                ]
+            except gp.GPhoto2Error:
+                return []
+
+        # Model from summary
+        model = ""
+        try:
+            summary = str(self._camera.get_summary())
+            for line in summary.splitlines():
+                if "Model:" in line or "model:" in line:
+                    model = line.split(":", 1)[1].strip()
+                    break
+        except gp.GPhoto2Error:
+            pass
+
+        return CameraCapabilities(
+            model=model,
+            supported_iso=_choices("iso"),
+            supported_shutter_speeds=_choices("shutterspeed"),
+            supported_apertures=_choices("f-number"),
+            supported_exposure_compensation=_choices(
+                "exposurecompensation"
+            ),
+            supported_white_balance=_choices("whitebalance"),
+            supported_focus_modes=_choices("focusmode"),
+            supported_exposure_programs=_choices("expprogram"),
+        )
+
+    def set_settings(self, **kwargs: str) -> None:
+        """Set one or more camera settings.
+
+        Args:
+            **kwargs: Field names from CameraSettings with new values.
+                      E.g. set_settings(iso="400", aperture="f/5.6")
+
+        Raises:
+            CameraNotConnectedError: If no camera connected.
+            InvalidSettingError: If a key is unknown or value invalid.
+        """
+        self._require_connected()
+        assert self._camera is not None
+
+        if not kwargs:
+            return
+
+        config = self._camera.get_config()
+
+        for field_name, value in kwargs.items():
+            gp_key = self._SETTING_KEYS.get(field_name)
+            if gp_key is None:
+                raise InvalidSettingError(
+                    f"Unknown setting: {field_name}"
+                )
+
+            try:
+                widget = config.get_child_by_name(gp_key)
+            except gp.GPhoto2Error as e:
+                raise InvalidSettingError(
+                    f"Setting {field_name} not available: {e.string}"
+                ) from e
+
+            if widget.get_readonly():
+                raise InvalidSettingError(
+                    f"Setting {field_name} is read-only"
+                )
+
+            # Validate value is in choices (for RADIO/MENU widgets)
+            wtype = widget.get_type()
+            if wtype in (gp.GP_WIDGET_RADIO, gp.GP_WIDGET_MENU):
+                choices = [
+                    widget.get_choice(i)
+                    for i in range(widget.count_choices())
+                ]
+                if value not in choices:
+                    raise InvalidSettingError(
+                        f"Invalid value '{value}' for {field_name}. "
+                        f"Valid: {choices[:10]}..."
+                    )
+
+            try:
+                widget.set_value(value)
+            except gp.GPhoto2Error as e:
+                raise InvalidSettingError(
+                    f"Failed to set {field_name}={value}: {e.string}"
+                ) from e
+
+        # Apply all changes at once
+        try:
+            self._camera.set_config(config)
+        except gp.GPhoto2Error as e:
+            raise InvalidSettingError(
+                f"Failed to apply settings: {e.string}"
+            ) from e
 
     def _require_connected(self) -> None:
         """Raise if camera is not connected."""

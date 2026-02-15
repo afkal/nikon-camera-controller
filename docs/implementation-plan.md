@@ -77,12 +77,12 @@ Speksissä on joitain kohtia jotka eivät vastaa FastHTML:n nykyistä API:a:
 **Hyväksyntä:** UI näyttää "Disconnected". Connect-nappi yrittää yhdistää (onnistuu/epäonnistuu riippuen onko kamera kiinni).
 
 ### 2.3 Camera Settings — read & write
-- [ ] Luo `app/camera/settings.py` — `CameraSettings` dataclass
-- [ ] Toteuta `CameraController.get_settings()` — lukee asetukset gPhoto2:lta
-- [ ] Toteuta `CameraController.get_capabilities()` — kyselee tuetut arvot kameralta
-- [ ] Toteuta `CameraController.set_settings(**kwargs)` — asettaa yhden tai useamman asetuksen
-- [ ] Luo `app/camera/capabilities.py` — `CameraCapabilities` dataclass
-- [ ] Testit: settings luku/kirjoitus mock-pohjaisesti
+- [x] Luo `app/camera/settings.py` — `CameraSettings` dataclass
+- [x] Toteuta `CameraController.get_settings()` — lukee asetukset gPhoto2:lta
+- [x] Toteuta `CameraController.get_capabilities()` — kyselee tuetut arvot kameralta
+- [x] Toteuta `CameraController.set_settings(**kwargs)` — asettaa yhden tai useamman asetuksen
+- [x] Luo `app/camera/capabilities.py` — `CameraCapabilities` dataclass
+- [x] Testit: settings luku/kirjoitus mock-pohjaisesti
 
 **Hyväksyntä:** Testit menevät läpi. Ihminen voi testata oikealla kameralla: lue asetukset → muuta ISO → lue uudelleen → arvo muuttunut.
 

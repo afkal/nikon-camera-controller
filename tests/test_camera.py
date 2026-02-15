@@ -9,6 +9,7 @@ from app.camera.exceptions import (
     CameraAlreadyConnectedError,
     CameraConnectionError,
     CameraNotConnectedError,
+    InvalidSettingError,
 )
 
 
@@ -207,3 +208,232 @@ class TestRequireConnected:
     ) -> None:
         # Should not raise
         connected_controller._require_connected()
+
+
+# --- Helper: build mock config tree ---
+
+
+def _make_mock_config(
+    settings: dict[str, str],
+    choices: dict[str, list[str]] | None = None,
+    readonly: dict[str, bool] | None = None,
+) -> MagicMock:
+    """Build a mock gPhoto2 config tree.
+
+    Args:
+        settings: {gp_key: current_value}
+        choices: {gp_key: [choice1, choice2, ...]}
+        readonly: {gp_key: True/False}
+    """
+    import gphoto2 as gp
+
+    choices = choices or {}
+    readonly = readonly or {}
+    mock_config = MagicMock()
+
+    def get_child_by_name(name: str) -> MagicMock:
+        if name not in settings:
+            raise gp.GPhoto2Error(gp.GP_ERROR)
+        widget = MagicMock()
+        widget.get_value.return_value = settings[name]
+        widget.get_readonly.return_value = readonly.get(name, False)
+        widget.get_type.return_value = gp.GP_WIDGET_RADIO
+        ch = choices.get(name, [settings[name]])
+        widget.count_choices.return_value = len(ch)
+        widget.get_choice.side_effect = lambda i: ch[i]
+        return widget
+
+    mock_config.get_child_by_name.side_effect = get_child_by_name
+    return mock_config
+
+
+# --- Settings tests ---
+
+
+class TestGetSettings:
+    def test_raises_when_not_connected(
+        self, controller: CameraController
+    ) -> None:
+        with pytest.raises(CameraNotConnectedError):
+            controller.get_settings()
+
+    def test_reads_all_settings(
+        self, connected_controller: CameraController
+    ) -> None:
+        mock_camera = connected_controller._camera
+        assert mock_camera is not None
+
+        mock_config = _make_mock_config({
+            "iso": "400",
+            "shutterspeed": "1/250",
+            "f-number": "f/5.6",
+            "exposurecompensation": "0",
+            "whitebalance": "Automatic",
+            "focusmode": "AF-S",
+            "expprogram": "M",
+        })
+        mock_camera.get_config.return_value = mock_config
+
+        settings = connected_controller.get_settings()
+
+        assert settings.iso == "400"
+        assert settings.shutter_speed == "1/250"
+        assert settings.aperture == "f/5.6"
+        assert settings.exposure_compensation == "0"
+        assert settings.white_balance == "Automatic"
+        assert settings.focus_mode == "AF-S"
+        assert settings.exposure_program == "M"
+
+    def test_handles_missing_settings(
+        self, connected_controller: CameraController
+    ) -> None:
+        mock_camera = connected_controller._camera
+        assert mock_camera is not None
+
+        # Only iso available
+        mock_config = _make_mock_config({"iso": "800"})
+        mock_camera.get_config.return_value = mock_config
+
+        settings = connected_controller.get_settings()
+        assert settings.iso == "800"
+        # Others should be defaults
+        assert settings.shutter_speed == ""
+
+
+class TestGetCapabilities:
+    def test_raises_when_not_connected(
+        self, controller: CameraController
+    ) -> None:
+        with pytest.raises(CameraNotConnectedError):
+            controller.get_capabilities()
+
+    def test_reads_capabilities(
+        self, connected_controller: CameraController
+    ) -> None:
+        mock_camera = connected_controller._camera
+        assert mock_camera is not None
+
+        mock_config = _make_mock_config(
+            settings={
+                "iso": "400",
+                "shutterspeed": "1/250",
+                "f-number": "f/5.6",
+                "whitebalance": "Automatic",
+            },
+            choices={
+                "iso": ["100", "200", "400", "800"],
+                "shutterspeed": ["1/1000", "1/500", "1/250"],
+                "f-number": ["f/2.8", "f/4", "f/5.6", "f/8"],
+                "whitebalance": ["Automatic", "Daylight", "Cloudy"],
+            },
+        )
+        mock_camera.get_config.return_value = mock_config
+        mock_camera.get_summary.return_value = "Model: D7500\nSerial: 123"
+
+        caps = connected_controller.get_capabilities()
+
+        assert caps.model == "D7500"
+        assert caps.supported_iso == ["100", "200", "400", "800"]
+        assert caps.supported_shutter_speeds == [
+            "1/1000", "1/500", "1/250"
+        ]
+        assert caps.supported_apertures == [
+            "f/2.8", "f/4", "f/5.6", "f/8"
+        ]
+        assert caps.supported_white_balance == [
+            "Automatic", "Daylight", "Cloudy"
+        ]
+
+
+class TestSetSettings:
+    def test_raises_when_not_connected(
+        self, controller: CameraController
+    ) -> None:
+        with pytest.raises(CameraNotConnectedError):
+            controller.set_settings(iso="400")
+
+    def test_set_single_setting(
+        self, connected_controller: CameraController
+    ) -> None:
+        mock_camera = connected_controller._camera
+        assert mock_camera is not None
+
+        mock_config = _make_mock_config(
+            {"iso": "200"},
+            choices={"iso": ["100", "200", "400", "800"]},
+        )
+        mock_camera.get_config.return_value = mock_config
+
+        connected_controller.set_settings(iso="400")
+
+        mock_camera.set_config.assert_called_once_with(mock_config)
+
+    def test_set_multiple_settings(
+        self, connected_controller: CameraController
+    ) -> None:
+        mock_camera = connected_controller._camera
+        assert mock_camera is not None
+
+        mock_config = _make_mock_config(
+            {"iso": "200", "f-number": "f/4"},
+            choices={
+                "iso": ["100", "200", "400"],
+                "f-number": ["f/2.8", "f/4", "f/5.6"],
+            },
+        )
+        mock_camera.get_config.return_value = mock_config
+
+        connected_controller.set_settings(iso="400", aperture="f/5.6")
+
+        mock_camera.set_config.assert_called_once()
+
+    def test_unknown_setting_raises(
+        self, connected_controller: CameraController
+    ) -> None:
+        mock_camera = connected_controller._camera
+        assert mock_camera is not None
+        mock_camera.get_config.return_value = MagicMock()
+
+        with pytest.raises(InvalidSettingError, match="Unknown setting"):
+            connected_controller.set_settings(nonexistent="value")
+
+    def test_invalid_value_raises(
+        self, connected_controller: CameraController
+    ) -> None:
+        mock_camera = connected_controller._camera
+        assert mock_camera is not None
+
+        mock_config = _make_mock_config(
+            {"iso": "200"},
+            choices={"iso": ["100", "200", "400"]},
+        )
+        mock_camera.get_config.return_value = mock_config
+
+        with pytest.raises(InvalidSettingError, match="Invalid value"):
+            connected_controller.set_settings(iso="99999")
+
+    def test_readonly_setting_raises(
+        self, connected_controller: CameraController
+    ) -> None:
+        mock_camera = connected_controller._camera
+        assert mock_camera is not None
+
+        mock_config = _make_mock_config(
+            {"focusmode": "AF-S"},
+            choices={"focusmode": ["AF-S", "AF-C", "Manual"]},
+            readonly={"focusmode": True},
+        )
+        mock_camera.get_config.return_value = mock_config
+
+        with pytest.raises(InvalidSettingError, match="read-only"):
+            connected_controller.set_settings(focus_mode="Manual")
+
+    def test_empty_kwargs_does_nothing(
+        self, connected_controller: CameraController
+    ) -> None:
+        mock_camera = connected_controller._camera
+        assert mock_camera is not None
+
+        connected_controller.set_settings()
+
+        mock_camera.get_config.assert_not_called()
