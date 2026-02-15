@@ -1,8 +1,30 @@
 """Nikon Camera Controller - FastHTML application entry point."""
 
+import logging
+import sys
 from pathlib import Path
 
+# Ensure project root is on sys.path when run directly (python app/main.py)
+_project_root = str(Path(__file__).resolve().parent.parent)
+if _project_root not in sys.path:
+    sys.path.insert(0, _project_root)
+
 from fasthtml.common import *
+
+from app.camera.controller import CameraController
+from app.camera.exceptions import (
+    CameraAlreadyConnectedError,
+    CameraConnectionError,
+)
+from app.components.status import (
+    camera_status_indicator,
+    controls_content,
+)
+
+logger = logging.getLogger(__name__)
+
+# Global camera controller instance
+camera = CameraController()
 
 app, rt = fast_app(
     static_path=str(Path(__file__).parent / "static"),
@@ -19,6 +41,7 @@ app, rt = fast_app(
 @rt("/")
 def get():
     """Main page with camera controller layout."""
+    status = camera.get_status()
     return Title("Nikon Camera Controller"), Main(
         # Header bar
         Header(
@@ -30,11 +53,7 @@ def get():
                     cls="header-brand",
                 ),
                 Nav(
-                    Div(
-                        Span(cls="status-dot status-dot-disconnected"),
-                        Span("Disconnected", cls="status-label"),
-                        cls="status-indicator",
-                    ),
+                    camera_status_indicator(status),
                     id="camera-status",
                     cls="header-nav",
                 ),
@@ -52,15 +71,7 @@ def get():
                         cls="section-header",
                     ),
                     Div(
-                        Div(
-                            Div(cls="empty-state-icon"),
-                            P("Connect a camera to begin"),
-                            P(
-                                "Plug in your Nikon via USB and click Connect",
-                                cls="empty-state-hint",
-                            ),
-                            cls="empty-state",
-                        ),
+                        controls_content(status),
                         id="controls-content",
                         cls="section-body",
                     ),
@@ -169,6 +180,39 @@ def get():
         ),
         cls="app-shell",
     )
+
+
+# --- Camera API routes ---
+
+
+@rt("/api/camera/status")
+def get():
+    """Return camera status indicator as HTMX fragment."""
+    status = camera.get_status()
+    return camera_status_indicator(status)
+
+
+@rt("/api/camera/connect")
+def post():
+    """Connect to the camera. Returns updated controls content."""
+    try:
+        camera.connect()
+        status = camera.get_status()
+        return controls_content(status)
+    except CameraAlreadyConnectedError:
+        status = camera.get_status()
+        return controls_content(status)
+    except CameraConnectionError as e:
+        status = camera.get_status()
+        return controls_content(status, error=str(e))
+
+
+@rt("/api/camera/disconnect")
+def post():
+    """Disconnect from the camera. Returns updated controls content."""
+    camera.disconnect()
+    status = camera.get_status()
+    return controls_content(status)
 
 
 if __name__ == "__main__":

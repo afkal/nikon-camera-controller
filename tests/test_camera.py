@@ -70,8 +70,10 @@ class TestConnect:
     @patch("app.camera.controller.gp.Camera")
     @patch("app.camera.controller.platform.system", return_value="Darwin")
     @patch("app.camera.controller.subprocess.run")
-    def test_connect_kills_ptpcamera_on_macos(
+    @patch("app.camera.controller.time.sleep")
+    def test_connect_kills_ptp_agents_on_macos(
         self,
+        mock_sleep: MagicMock,
         mock_run: MagicMock,
         mock_system: MagicMock,
         mock_camera_cls: MagicMock,
@@ -81,8 +83,15 @@ class TestConnect:
 
         ctrl.connect()
 
-        mock_run.assert_called_once_with(
-            ["killall", "PTPCamera"],
+        # Should kill both PTPCamera and ptpcamerad with -9
+        assert mock_run.call_count == 2
+        mock_run.assert_any_call(
+            ["killall", "-9", "PTPCamera"],
+            capture_output=True,
+            timeout=5,
+        )
+        mock_run.assert_any_call(
+            ["killall", "-9", "ptpcamerad"],
             capture_output=True,
             timeout=5,
         )

@@ -3,6 +3,7 @@
 import logging
 import platform
 import subprocess
+import time
 from typing import Any
 
 import gphoto2 as gp
@@ -45,28 +46,44 @@ class CameraController:
         if self._connected:
             raise CameraAlreadyConnectedError("Camera is already connected")
 
-        # Kill macOS PTPCamera agent that grabs USB devices
+        # Kill macOS PTP daemons that grab USB camera devices.
+        # Both PTPCamera and ptpcamerad (launchd-managed) must be killed.
+        # ptpcamerad respawns automatically but briefly releases the USB.
         if platform.system() == "Darwin":
-            try:
-                subprocess.run(
-                    ["killall", "PTPCamera"],
-                    capture_output=True,
-                    timeout=5,
-                )
-            except (subprocess.SubprocessError, OSError):
-                pass  # PTPCamera may not be running
+            self._kill_macos_ptp_agents()
 
-        try:
-            self._camera = gp.Camera()
-            self._camera.init()
-            self._connected = True
-            logger.info("Camera connected successfully")
-        except gp.GPhoto2Error as e:
-            self._camera = None
-            self._connected = False
-            raise CameraConnectionError(
-                f"Failed to connect to camera: {e.string}"
-            ) from e
+        # Retry connection — ptpcamerad respawns quickly, so
+        # re-kill before each attempt to keep the USB free.
+        is_mac = platform.system() == "Darwin"
+        last_error: gp.GPhoto2Error | None = None
+        for attempt in range(3):
+            if attempt > 0 and is_mac:
+                self._kill_macos_ptp_agents()
+            try:
+                self._camera = gp.Camera()
+                self._camera.init()
+                self._connected = True
+                logger.info("Camera connected successfully")
+                return
+            except gp.GPhoto2Error as e:
+                last_error = e
+                logger.debug(
+                    "Connection attempt %d failed: %s",
+                    attempt + 1,
+                    e.string,
+                )
+                if self._camera is not None:
+                    try:
+                        self._camera.exit()
+                    except gp.GPhoto2Error:
+                        pass
+                self._camera = None
+
+        self._connected = False
+        msg = last_error.string if last_error else "unknown error"
+        raise CameraConnectionError(
+            f"Failed to connect to camera: {msg}"
+        )
 
     def disconnect(self) -> None:
         """Disconnect from the camera.
@@ -141,3 +158,23 @@ class CameraController:
         """Raise if camera is not connected."""
         if not self._connected or self._camera is None:
             raise CameraNotConnectedError("No camera connected")
+
+    @staticmethod
+    def _kill_macos_ptp_agents() -> None:
+        """Kill macOS PTP daemons that hold USB camera devices.
+
+        Kills both the legacy PTPCamera and the modern ptpcamerad.
+        ptpcamerad is launchd-managed and respawns, but briefly
+        releases the USB device, giving us a window to connect.
+        """
+        for proc_name in ("PTPCamera", "ptpcamerad"):
+            try:
+                subprocess.run(
+                    ["killall", "-9", proc_name],
+                    capture_output=True,
+                    timeout=5,
+                )
+            except (subprocess.SubprocessError, OSError):
+                pass
+        # Brief wait for USB device to be released
+        time.sleep(0.5)

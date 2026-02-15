@@ -595,6 +595,105 @@ body {
     outline-offset: 2px;
 }
 
+/* --- Buttons --- */
+.btn {
+    display: block;
+    width: 100%;
+    padding: 8px 16px;
+    font-family: var(--font-sans);
+    font-size: 0.8rem;
+    font-weight: 600;
+    border: 1px solid var(--border-default);
+    border-radius: var(--radius-sm);
+    cursor: pointer;
+    transition: all var(--transition-base);
+    text-align: center;
+}
+
+.btn-connect {
+    background: var(--brand-primary);
+    color: var(--text-inverse);
+    border-color: var(--brand-primary);
+}
+
+.btn-connect:hover {
+    background: var(--brand-primary-hover);
+    border-color: var(--brand-primary-hover);
+}
+
+.btn-disconnect {
+    background: transparent;
+    color: var(--text-secondary);
+    border-color: var(--border-strong);
+}
+
+.btn-disconnect:hover {
+    color: var(--color-danger);
+    border-color: var(--color-danger);
+}
+
+/* HTMX loading state */
+.btn.htmx-request {
+    opacity: 0.6;
+    pointer-events: none;
+}
+
+/* --- Connect Button Area --- */
+#connect-btn-area {
+    padding: var(--space-sm) var(--space-lg);
+}
+
+/* --- Camera Info --- */
+.camera-info {
+    display: flex;
+    flex-direction: column;
+    gap: 1px;
+    padding: var(--space-sm) var(--space-lg);
+}
+
+.info-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 6px 0;
+    border-bottom: 1px solid var(--border-subtle);
+}
+
+.info-row:last-child {
+    border-bottom: none;
+}
+
+.info-label {
+    font-size: 0.72rem;
+    font-weight: 500;
+    color: var(--text-tertiary);
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+}
+
+.info-value {
+    font-size: 0.82rem;
+    font-weight: 600;
+    color: var(--text-primary);
+    font-family: var(--font-mono);
+}
+
+/* --- Error Banner --- */
+.error-banner {
+    margin: var(--space-sm) var(--space-lg);
+    padding: var(--space-sm) var(--space-md);
+    background: var(--color-danger-subtle);
+    border: 1px solid rgba(217, 83, 79, 0.3);
+    border-radius: var(--radius-sm);
+}
+
+.error-message {
+    font-size: 0.78rem;
+    color: var(--color-danger);
+    font-weight: 500;
+    line-height: 1.4;
+}
+
 /* --- Responsive --- */
 @media (max-width: 1024px) {
     .main-layout {

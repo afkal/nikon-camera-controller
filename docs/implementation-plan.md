@@ -68,11 +68,11 @@ Speksissä on joitain kohtia jotka eivät vastaa FastHTML:n nykyistä API:a:
 **Hyväksyntä:** Testit menevät läpi. Ihminen voi halutessaan testata oikealla kameralla.
 
 ### 2.2 Camera Status -UI-komponentti
-- [ ] Luo `app/components/status.py` — `CameraStatus()`-funktio joka renderöi status-widgetin
-- [ ] Luo reitti `GET /api/camera/status` — palauttaa status-fragmentin
-- [ ] Lisää etusivulle status-widget, joka pollaa HTMX:llä (`hx_trigger="every 5s"`)
-- [ ] Luo reitit `POST /api/camera/connect` ja `POST /api/camera/disconnect`
-- [ ] Lisää UI:hin Connect/Disconnect -nappi
+- [x] Luo `app/components/status.py` — `CameraStatus()`-funktio joka renderöi status-widgetin
+- [x] Luo reitti `GET /api/camera/status` — palauttaa status-fragmentin
+- [x] Lisää etusivulle status-widget, joka pollaa HTMX:llä (`hx_trigger="every 5s"`)
+- [x] Luo reitit `POST /api/camera/connect` ja `POST /api/camera/disconnect`
+- [x] Lisää UI:hin Connect/Disconnect -nappi
 
 **Hyväksyntä:** UI näyttää "Disconnected". Connect-nappi yrittää yhdistää (onnistuu/epäonnistuu riippuen onko kamera kiinni).
 
@@ -256,7 +256,7 @@ Speksissä on joitain kohtia jotka eivät vastaa FastHTML:n nykyistä API:a:
 - HTMX-pyynnöt saavat HTML-fragmentin, normaalit pyynnöt kokonaisen sivun
 
 ### gPhoto2-kohtaiset huomiot (macOS)
-- `killall PTPCamera` ennen yhteyden muodostamista
+- `killall -9 PTPCamera` ja `killall -9 ptpcamerad` ennen yhteyden muodostamista
 - Kamera pitää olla PTP/MTP-tilassa
 - `gphoto2 --auto-detect` testaa onko kamera näkyvissä
 - ISO-arvot ovat merkkijonoja gPhoto2:ssa ("800", ei 800)
@@ -268,3 +268,17 @@ Speksissä on joitain kohtia jotka eivät vastaa FastHTML:n nykyistä API:a:
 - numpy
 - matplotlib
 - pytest, ruff, mypy
+
+---
+
+## Post-MVP prospektilista
+
+Mahdollisia jatkokehityskohteita MVP:n jälkeen:
+
+- [ ] WiFi-yhteys kameraan (Nikon SnapBridge/WMU) — vaatii protokollan reverse-engineerausta, ei gPhoto2-tukea
+- [ ] Live View -striimaustuki
+- [ ] Usean kameran samanaikainen hallinta
+- [ ] Focus stacking -automaatio
+- [ ] Timelapse-ohjaus
+- [ ] Tethered shooting -tila (automaattinen kuvien siirto koneelle)
+- [ ] Preset-järjestelmä (tallenna/lataa kamera-asetukset)
