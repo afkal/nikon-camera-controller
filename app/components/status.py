@@ -4,6 +4,10 @@ from typing import Any
 
 from fasthtml.common import Button, Div, P, Span
 
+from app.camera.capabilities import CameraCapabilities
+from app.camera.settings import CameraSettings
+from app.components.controls import camera_controls
+
 
 def camera_status_indicator(status: dict[str, Any]) -> Div:
     """Render the header status indicator (dot + label).
@@ -58,10 +62,16 @@ def connect_button(connected: bool) -> Div:
         )
 
 
-def controls_content(status: dict[str, Any], error: str | None = None) -> Div:
+def controls_content(
+    status: dict[str, Any],
+    settings: CameraSettings | None = None,
+    capabilities: CameraCapabilities | None = None,
+    error: str | None = None,
+) -> Div:
     """Render the sidebar controls area content.
 
-    Shows connect button when disconnected, or camera info when connected.
+    Shows connect button when disconnected, or camera controls
+    with settings selectors when connected.
     """
     connected = status.get("connected", False)
 
@@ -88,12 +98,13 @@ def controls_content(status: dict[str, Any], error: str | None = None) -> Div:
             connect_button(False),
         )
 
-    # Connected state — show camera info
+    # Connected state — show camera controls
+    children = []
+
+    # Camera info summary
     model = status.get("model") or "Camera"
     battery = status.get("battery") or "—"
-    storage = status.get("storage_free") or "—"
-
-    return Div(
+    children.append(
         Div(
             Div(
                 Span("Camera", cls="info-label"),
@@ -105,12 +116,14 @@ def controls_content(status: dict[str, Any], error: str | None = None) -> Div:
                 Span(str(battery), cls="info-value"),
                 cls="info-row",
             ),
-            Div(
-                Span("Storage", cls="info-label"),
-                Span(str(storage), cls="info-value"),
-                cls="info-row",
-            ),
             cls="camera-info",
-        ),
-        connect_button(True),
+        )
     )
+
+    # Settings controls (if available)
+    if settings and capabilities:
+        children.append(camera_controls(settings, capabilities))
+
+    children.append(connect_button(True))
+
+    return Div(*children)

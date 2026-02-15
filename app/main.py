@@ -15,11 +15,31 @@ from app.camera.controller import CameraController
 from app.camera.exceptions import (
     CameraAlreadyConnectedError,
     CameraConnectionError,
+    InvalidSettingError,
 )
 from app.components.status import (
     camera_status_indicator,
     controls_content,
 )
+
+
+def _get_controls_content(error: str | None = None):
+    """Helper: build controls_content with current camera state."""
+    status = camera.get_status()
+    settings = None
+    capabilities = None
+    if status["connected"]:
+        try:
+            settings = camera.get_settings()
+            capabilities = camera.get_capabilities()
+        except Exception:
+            pass
+    return controls_content(
+        status,
+        settings=settings,
+        capabilities=capabilities,
+        error=error,
+    )
 
 logger = logging.getLogger(__name__)
 
@@ -42,6 +62,7 @@ app, rt = fast_app(
 def get():
     """Main page with camera controller layout."""
     status = camera.get_status()
+    ctrl_content = _get_controls_content()
     return Title("Nikon Camera Controller"), Main(
         # Header bar
         Header(
@@ -71,7 +92,7 @@ def get():
                         cls="section-header",
                     ),
                     Div(
-                        controls_content(status),
+                        ctrl_content,
                         id="controls-content",
                         cls="section-body",
                     ),
@@ -197,22 +218,54 @@ def post():
     """Connect to the camera. Returns updated controls content."""
     try:
         camera.connect()
-        status = camera.get_status()
-        return controls_content(status)
+        return _get_controls_content()
     except CameraAlreadyConnectedError:
-        status = camera.get_status()
-        return controls_content(status)
+        return _get_controls_content()
     except CameraConnectionError as e:
-        status = camera.get_status()
-        return controls_content(status, error=str(e))
+        return _get_controls_content(error=str(e))
 
 
 @rt("/api/camera/disconnect")
 def post():
     """Disconnect from the camera. Returns updated controls content."""
     camera.disconnect()
-    status = camera.get_status()
-    return controls_content(status)
+    return _get_controls_content()
+
+
+@rt("/api/camera/settings")
+def get():
+    """Return current camera settings as HTMX fragment."""
+    return _get_controls_content()
+
+
+@rt("/api/camera/settings")
+def post(
+    iso: str | None = None,
+    shutter_speed: str | None = None,
+    aperture: str | None = None,
+    exposure_compensation: str | None = None,
+    white_balance: str | None = None,
+):
+    """Update a camera setting and return refreshed controls."""
+    kwargs = {}
+    if iso is not None:
+        kwargs["iso"] = iso
+    if shutter_speed is not None:
+        kwargs["shutter_speed"] = shutter_speed
+    if aperture is not None:
+        kwargs["aperture"] = aperture
+    if exposure_compensation is not None:
+        kwargs["exposure_compensation"] = exposure_compensation
+    if white_balance is not None:
+        kwargs["white_balance"] = white_balance
+
+    if kwargs:
+        try:
+            camera.set_settings(**kwargs)
+        except InvalidSettingError as e:
+            return _get_controls_content(error=str(e))
+
+    return _get_controls_content()
 
 
 if __name__ == "__main__":
