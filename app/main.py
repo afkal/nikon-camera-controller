@@ -512,7 +512,7 @@ def post():
     into the in-memory session. Returns the updated history
     panel plus badge as OOB swap.
     """
-    session.restore_from_disk(_captures_dir)
+    session.restore_from_disk(_captures_dir, analyzer=analyzer)
     return (
         history_panel(session.captures),
         history_badge(session.count, hx_swap_oob=True),

@@ -3,7 +3,9 @@
 from pathlib import Path
 
 import pytest
+from PIL import Image
 
+from app.analysis.processor import ImageAnalyzer
 from app.storage.session import CaptureRecord, CaptureSession
 
 
@@ -279,3 +281,64 @@ class TestRestoreFromDisk:
         session.restore_from_disk(tmp_path)
         assert session.captures[0].capture_id == 1
         assert session.captures[1].capture_id == 2
+
+    def test_restore_with_analyzer_populates_metrics(
+        self, session: CaptureSession, tmp_path: Path
+    ) -> None:
+        """When analyzer is provided, metrics are populated."""
+        img = Image.new("RGB", (20, 20), (128, 128, 128))
+        img.save(tmp_path / "IMG_20260215_120000.jpg")
+
+        analyzer = ImageAnalyzer()
+        session.restore_from_disk(tmp_path, analyzer=analyzer)
+
+        record = session.captures[0]
+        assert record.average_brightness is not None
+        assert record.average_brightness > 0
+        assert record.overexposed_percent is not None
+        assert record.underexposed_percent is not None
+        assert record.dynamic_range is not None
+
+    def test_restore_with_analyzer_generates_histogram(
+        self, session: CaptureSession, tmp_path: Path
+    ) -> None:
+        """When analyzer is provided, histogram PNG is generated."""
+        img = Image.new("RGB", (20, 20), (100, 150, 200))
+        img.save(tmp_path / "IMG_20260215_120000.jpg")
+
+        analyzer = ImageAnalyzer()
+        session.restore_from_disk(tmp_path, analyzer=analyzer)
+
+        record = session.captures[0]
+        assert record.histogram_png is not None
+        assert (tmp_path / record.histogram_png).exists()
+
+    def test_restore_without_analyzer_no_metrics(
+        self, session: CaptureSession, tmp_path: Path
+    ) -> None:
+        """Without analyzer, metrics remain None."""
+        img = Image.new("RGB", (20, 20), (128, 128, 128))
+        img.save(tmp_path / "IMG_20260215_120000.jpg")
+
+        session.restore_from_disk(tmp_path)  # no analyzer
+
+        record = session.captures[0]
+        assert record.average_brightness is None
+        assert record.overexposed_percent is None
+
+    def test_restore_with_analyzer_keeps_existing_histogram(
+        self, session: CaptureSession, tmp_path: Path
+    ) -> None:
+        """If histogram PNG already exists, don't regenerate it."""
+        img = Image.new("RGB", (20, 20), (128, 128, 128))
+        img.save(tmp_path / "IMG_20260215_120000.jpg")
+        # Pre-existing histogram
+        (tmp_path / "IMG_20260215_120000_hist.png").write_bytes(b"existing")
+
+        analyzer = ImageAnalyzer()
+        session.restore_from_disk(tmp_path, analyzer=analyzer)
+
+        record = session.captures[0]
+        assert record.histogram_png == "IMG_20260215_120000_hist.png"
+        # Should still have metrics
+        assert record.average_brightness is not None

@@ -119,18 +119,28 @@ class CaptureSession:
             return None
         return self._captures[-2]
 
-    def restore_from_disk(self, captures_dir: Path) -> int:
+    def restore_from_disk(
+        self,
+        captures_dir: Path,
+        analyzer: Any | None = None,
+    ) -> int:
         """Scan a directory for previously captured images and load them.
 
         Finds ``IMG_*.jpg`` files (our naming convention), sorts by name
         (chronological), and creates a CaptureRecord for each. Also
         picks up the corresponding ``*_hist.png`` histogram if present.
 
+        If an ``ImageAnalyzer`` instance is provided, each image is
+        analyzed to populate exposure metrics (brightness, clipping,
+        dynamic range). If the histogram PNG doesn't exist yet, it is
+        generated as well.
+
         Skips files already in the session (by filename) so it's safe
         to call after new captures have been added.
 
         Args:
             captures_dir: Path to the captures directory.
+            analyzer: Optional ``ImageAnalyzer`` to compute metrics.
 
         Returns:
             Number of records restored.
@@ -160,6 +170,53 @@ class CaptureSession:
                 hist_png_path.name if hist_png_path.exists() else None
             )
 
+            # Analyze the image if analyzer is available
+            brightness = None
+            overexposed = None
+            underexposed = None
+            dyn_range = None
+
+            if analyzer is not None:
+                try:
+                    analysis = analyzer.analyze(image_path)
+                    brightness = analysis.average_brightness
+                    overexposed = analysis.overexposed_percent
+                    underexposed = analysis.underexposed_percent
+                    dyn_range = analysis.dynamic_range
+
+                    # Generate histogram PNG if it doesn't exist
+                    if hist_png_name is None:
+                        try:
+                            from app.analysis.histogram import (
+                                generate_histogram_plot,
+                            )
+
+                            hist_output = image_path.with_name(
+                                image_path.stem + "_hist.png"
+                            )
+                            hist_data = {
+                                "red": analysis.histogram_red,
+                                "green": analysis.histogram_green,
+                                "blue": analysis.histogram_blue,
+                                "luminance": analysis.histogram_luminance,
+                            }
+                            generate_histogram_plot(
+                                hist_data, hist_output
+                            )
+                            hist_png_name = hist_output.name
+                        except Exception:
+                            logger.debug(
+                                "Failed to generate histogram for %s",
+                                image_path.name,
+                                exc_info=True,
+                            )
+                except Exception:
+                    logger.debug(
+                        "Failed to analyze %s",
+                        image_path.name,
+                        exc_info=True,
+                    )
+
             record = CaptureRecord(
                 capture_id=0,  # assigned by add()
                 filename=image_path.name,
@@ -167,6 +224,10 @@ class CaptureSession:
                 captured_at=captured_at,
                 file_size=file_size,
                 histogram_png=hist_png_name,
+                average_brightness=brightness,
+                overexposed_percent=overexposed,
+                underexposed_percent=underexposed,
+                dynamic_range=dyn_range,
             )
             self.add(record)
             restored += 1
