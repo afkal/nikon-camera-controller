@@ -36,3 +36,6 @@ data/presets/
 # Environment
 .env
 *.env
+
+# FastHTML
+.sesskey
