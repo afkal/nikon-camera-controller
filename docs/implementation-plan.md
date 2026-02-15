@@ -210,9 +210,9 @@ Speksissä on joitain kohtia jotka eivät vastaa FastHTML:n nykyistä API:a:
 **Hyväksyntä:** `pytest tests/` — kaikki vihreää. `ruff` ja `mypy` puhtaat.
 
 ### 6.3 Dokumentaatio
-- [ ] `README.md` — asennusohjeet (macOS), käyttöohjeet, kuvakaappaukset
-- [ ] Docstringit kaikissa julkisissa luokissa ja funktioissa
-- [ ] `CHANGELOG.md` — v0.1.0 release notes
+- [x] `README.md` — asennusohjeet (macOS), käyttöohjeet, arkkitehtuuri
+- [x] Docstringit kaikissa julkisissa luokissa ja funktioissa
+- [x] `CHANGELOG.md` — v1.0.0 MVP release notes
 
 **Hyväksyntä:** Ihminen lukee READMEn, seuraa ohjeita puhtaalta koneelta → sovellus käynnistyy.
 
