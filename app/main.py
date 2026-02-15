@@ -279,7 +279,12 @@ def post(
 
 @rt("/api/capture")
 def post():
-    """Capture an image and return updated preview panel."""
+    """Capture an image and return updated preview panel.
+
+    On error, returns OOB fragments to sync the controls sidebar
+    and status indicator so the UI reflects the true camera state
+    (e.g. disconnected after a USB unplug during capture).
+    """
     try:
         # Read settings before capture for metadata display
         settings = None
@@ -308,21 +313,43 @@ def post():
         )
 
     except CameraNotConnectedError:
-        return preview_panel(
-            connected=False,
-            error="Camera not connected",
-        )
+        return _capture_error_response("Camera not connected")
     except CaptureError as e:
-        return preview_panel(
-            connected=camera.connected,
-            error=str(e),
+        return _capture_error_response(str(e))
+    except OSError as e:
+        logger.exception("Filesystem error during capture")
+        return _capture_error_response(
+            f"File save failed: {e.strerror or e}"
         )
     except Exception as e:
         logger.exception("Unexpected capture error")
-        return preview_panel(
-            connected=camera.connected,
-            error=f"Capture failed: {e}",
-        )
+        return _capture_error_response(f"Capture failed: {e}")
+
+
+def _capture_error_response(error: str):
+    """Build a capture error response with OOB fragments.
+
+    Returns the preview panel (primary target) plus OOB-swapped
+    controls content and status indicator so the sidebar and
+    header reflect the current camera state after a failure.
+    """
+    status = camera.get_status()
+    connected = status.get("connected", False)
+    return (
+        preview_panel(connected=connected, error=error),
+        Div(
+            _get_controls_content(),
+            id="controls-content",
+            cls="section-body",
+            hx_swap_oob="true",
+        ),
+        Nav(
+            camera_status_indicator(status),
+            id="camera-status",
+            cls="header-nav",
+            hx_swap_oob="true",
+        ),
+    )
 
 
 # --- Static file mounts ---

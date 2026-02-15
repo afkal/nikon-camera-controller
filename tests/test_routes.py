@@ -1,6 +1,6 @@
 """Tests for FastHTML routes."""
 
-from unittest.mock import patch
+from unittest.mock import MagicMock, patch
 
 # --- Homepage tests ---
 
@@ -143,3 +143,149 @@ def test_camera_disconnect_shows_connect_button(client):
         }
         response = client.post("/api/camera/disconnect")
         assert "Connect Camera" in response.text
+
+
+# --- Capture API tests ---
+
+_DISCONNECTED_STATUS = {
+    "connected": False,
+    "model": None,
+    "battery": None,
+    "storage_free": None,
+}
+
+_CONNECTED_STATUS = {
+    "connected": True,
+    "model": "Nikon D7500",
+    "battery": "87%",
+    "storage_free": "1200",
+}
+
+
+def test_capture_not_connected_shows_error(client):
+    """POST /api/capture when disconnected → error banner."""
+    from app.camera.exceptions import CameraNotConnectedError
+
+    with patch("app.main.camera") as mock_camera:
+        mock_camera.capture.side_effect = CameraNotConnectedError(
+            "No camera connected"
+        )
+        mock_camera.connected = False
+        mock_camera.get_status.return_value = _DISCONNECTED_STATUS
+        response = client.post("/api/capture")
+        assert response.status_code == 200
+        assert "Camera not connected" in response.text
+        assert "error-banner" in response.text
+
+
+def test_capture_not_connected_syncs_controls(client):
+    """POST /api/capture when disconnected → OOB controls show Connect."""
+    from app.camera.exceptions import CameraNotConnectedError
+
+    with patch("app.main.camera") as mock_camera:
+        mock_camera.capture.side_effect = CameraNotConnectedError(
+            "No camera connected"
+        )
+        mock_camera.connected = False
+        mock_camera.get_status.return_value = _DISCONNECTED_STATUS
+        response = client.post("/api/capture")
+        html = response.text
+        # OOB controls-content should contain Connect button
+        assert "Connect Camera" in html
+        # OOB status indicator should show Disconnected
+        assert "Disconnected" in html
+
+
+def test_capture_error_shows_message(client):
+    """POST /api/capture with CaptureError → error message in banner."""
+    from app.camera.exceptions import CaptureError
+
+    with patch("app.main.camera") as mock_camera:
+        mock_camera.capture.side_effect = CaptureError(
+            "Failed to capture image: shutter timeout"
+        )
+        mock_camera.connected = True
+        mock_camera.get_status.return_value = _CONNECTED_STATUS
+        response = client.post("/api/capture")
+        assert response.status_code == 200
+        assert "shutter timeout" in response.text
+        assert "error-banner" in response.text
+
+
+def test_capture_filesystem_error_shows_message(client):
+    """POST /api/capture with OSError → file save error in banner."""
+    with patch("app.main.camera") as mock_camera:
+        mock_camera.capture.side_effect = OSError(
+            28, "No space left on device"
+        )
+        mock_camera.connected = True
+        mock_camera.get_status.return_value = _CONNECTED_STATUS
+        response = client.post("/api/capture")
+        assert response.status_code == 200
+        assert "No space left on device" in response.text
+        assert "error-banner" in response.text
+
+
+def test_capture_unexpected_error_shows_message(client):
+    """POST /api/capture with unexpected error → generic error."""
+    with patch("app.main.camera") as mock_camera:
+        mock_camera.capture.side_effect = RuntimeError("something broke")
+        mock_camera.connected = True
+        mock_camera.get_status.return_value = _CONNECTED_STATUS
+        response = client.post("/api/capture")
+        assert response.status_code == 200
+        assert "Capture failed" in response.text
+        assert "something broke" in response.text
+
+
+def test_capture_success_returns_image(client, tmp_path):
+    """POST /api/capture on success → image filename in response."""
+    # Create a fake image file
+    fake_image = tmp_path / "IMG_20260215_120000.jpg"
+    fake_image.write_bytes(b"\xff\xd8" + b"\x00" * 1000)
+
+    with patch("app.main.camera") as mock_camera:
+        mock_camera.connected = True
+        mock_camera.capture.return_value = fake_image
+        mock_camera.get_settings.return_value = MagicMock(
+            iso="400",
+            shutter_speed="1/250",
+            aperture="f/5.6",
+            exposure_compensation="0",
+        )
+        mock_camera.get_status.return_value = _CONNECTED_STATUS
+        response = client.post("/api/capture")
+        assert response.status_code == 200
+        assert "IMG_20260215_120000.jpg" in response.text
+        # No error banner
+        assert "error-banner" not in response.text
+
+
+def test_capture_error_clears_on_next_success(client, tmp_path):
+    """Error banner disappears on next successful capture."""
+    from app.camera.exceptions import CaptureError
+
+    fake_image = tmp_path / "IMG_20260215_120001.jpg"
+    fake_image.write_bytes(b"\xff\xd8" + b"\x00" * 1000)
+
+    with patch("app.main.camera") as mock_camera:
+        mock_camera.connected = True
+        mock_camera.get_status.return_value = _CONNECTED_STATUS
+
+        # First: error
+        mock_camera.capture.side_effect = CaptureError("timeout")
+        response = client.post("/api/capture")
+        assert "error-banner" in response.text
+
+        # Second: success
+        mock_camera.capture.side_effect = None
+        mock_camera.capture.return_value = fake_image
+        mock_camera.get_settings.return_value = MagicMock(
+            iso="400",
+            shutter_speed="1/250",
+            aperture="f/5.6",
+            exposure_compensation="0",
+        )
+        response = client.post("/api/capture")
+        assert "error-banner" not in response.text
+        assert "IMG_20260215_120001.jpg" in response.text
