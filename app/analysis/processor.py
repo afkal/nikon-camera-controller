@@ -104,8 +104,8 @@ class ImageAnalyzer:
             raise FileNotFoundError(f"Image not found: {image_path}")
 
         try:
-            img = Image.open(image_path)
-            img = img.convert("RGB")
+            img_file = Image.open(image_path)
+            img = img_file.convert("RGB")
         except Exception as e:
             raise ValueError(f"Cannot open image: {e}") from e
 

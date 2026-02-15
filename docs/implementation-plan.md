@@ -194,10 +194,10 @@ Speksissä on joitain kohtia jotka eivät vastaa FastHTML:n nykyistä API:a:
 ## Phase 6: Viimeistely
 
 ### 6.1 UI-polish
-- [ ] Responsiivinen layout (toimii kohtuullisesti myös kapeammalla näytöllä)
-- [ ] Keyboard shortcuts: Enter = capture, Ctrl+S = save preset
-- [ ] Loading-indikaattorit: capture-napin "Taking photo..." -tila
-- [ ] Tyylien viimeistely speksin värimaailmalla
+- [x] Responsiivinen layout (toimii kohtuullisesti myös kapeammalla näytöllä)
+- [x] Loading-indikaattorit: laukaisimen linssi-ikoni pulssaa kuvanoton aikana, connect/restore värikoodatut
+- [x] Tyylien viimeistely: favicon, advisor empty state, shutter-ikoni
+- [ ] ~~Keyboard shortcuts~~ (siirretty post-MVP:hen)
 
 **Hyväksyntä:** Ihminen arvioi UI:n käytettävyyden kokonaisuutena.
 

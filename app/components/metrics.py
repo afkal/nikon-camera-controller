@@ -32,11 +32,11 @@ def metrics_display(
 
         # Warning classes for clipping
         over_cls = "metric-item"
-        if overexposed_percent > _CLIPPING_WARN:
+        if overexposed_percent is not None and overexposed_percent > _CLIPPING_WARN:
             over_cls = "metric-item metric-warning"
 
         under_cls = "metric-item"
-        if underexposed_percent > _CLIPPING_WARN:
+        if underexposed_percent is not None and underexposed_percent > _CLIPPING_WARN:
             under_cls = "metric-item metric-warning"
     else:
         brightness_str = "--"

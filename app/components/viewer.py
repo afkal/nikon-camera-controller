@@ -1,10 +1,16 @@
 """Image viewer UI component."""
 
+from __future__ import annotations
+
 import json
 from datetime import datetime
 from pathlib import Path
+from typing import TYPE_CHECKING
 
 from fasthtml.common import Button, Div, Img, P, Span
+
+if TYPE_CHECKING:
+    from app.camera.settings import CameraSettings
 
 
 def capture_button(connected: bool, capturing: bool = False) -> Div:
@@ -197,7 +203,7 @@ def format_capture_time(file_path: Path) -> str:
         return ""
 
 
-def format_settings_summary(settings) -> str:
+def format_settings_summary(settings: "CameraSettings") -> str:
     """Build a short settings summary string."""
     parts = []
     if settings.iso:
