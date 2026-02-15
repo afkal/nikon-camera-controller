@@ -358,6 +358,10 @@ def post():
             captured_at=captured_at,
             settings_summary=settings_summary,
             file_size=file_size,
+            iso=settings.iso if settings else "",
+            shutter_speed=settings.shutter_speed if settings else "",
+            aperture=settings.aperture if settings else "",
+            white_balance=settings.white_balance if settings else "",
             average_brightness=analysis_brightness,
             overexposed_percent=analysis_overexposed,
             underexposed_percent=analysis_underexposed,
@@ -425,6 +429,17 @@ def get(capture_id: int):
             hx_swap_oob=True,
         )
 
+    # Build apply_settings dict from record (only non-empty values)
+    apply_dict: dict[str, str] = {}
+    if record.iso:
+        apply_dict["iso"] = record.iso
+    if record.shutter_speed:
+        apply_dict["shutter_speed"] = record.shutter_speed
+    if record.aperture:
+        apply_dict["aperture"] = record.aperture
+    if record.white_balance:
+        apply_dict["white_balance"] = record.white_balance
+
     if record.average_brightness is not None:
         metrics_oob = metrics_display(
             average_brightness=record.average_brightness,
@@ -434,22 +449,13 @@ def get(capture_id: int):
             hx_swap_oob=True,
         )
 
-        # Re-generate suggestions from stored analysis
-        settings_parts = record.settings_summary.split(" · ")
-        current_iso = ""
-        current_shutter = ""
-        for part in settings_parts:
-            if part.startswith("ISO "):
-                current_iso = part.replace("ISO ", "")
-            elif "/" in part and not part.startswith("f/"):
-                current_shutter = part
-
+        # Re-generate suggestions from stored settings
         suggestions = get_suggestions(
             average_brightness=record.average_brightness,
             overexposed_percent=record.overexposed_percent or 0.0,
             underexposed_percent=record.underexposed_percent or 0.0,
-            current_iso=current_iso,
-            current_shutter=current_shutter,
+            current_iso=record.iso,
+            current_shutter=record.shutter_speed,
         )
         advisor_oob = advisor_display(
             suggestions=suggestions,
@@ -463,6 +469,7 @@ def get(capture_id: int):
             settings_summary=record.settings_summary,
             captured_at=record.captured_at,
             file_size=record.file_size,
+            apply_settings=apply_dict if apply_dict else None,
         ),
         hist_oob,
         metrics_oob,

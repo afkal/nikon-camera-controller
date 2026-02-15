@@ -887,13 +887,46 @@ body {
 .meta-details {
     display: flex;
     align-items: center;
-    gap: var(--space-md);
+    gap: var(--space-sm);
+    flex-wrap: nowrap;
+    min-width: 0;
+    overflow: hidden;
 }
 
 .meta-item {
     font-size: 0.72rem;
     color: var(--text-tertiary);
     font-weight: 500;
+    white-space: nowrap;
+}
+
+/* --- Apply Settings Button (inline in metadata bar) --- */
+.btn-apply-settings {
+    /* Override .btn base: inline pill, not full-width block */
+    display: inline-flex;
+    width: auto;
+    background: transparent;
+    color: var(--brand-primary);
+    border: 1px solid var(--brand-primary);
+    padding: 1px 8px;
+    font-size: 0.65rem;
+    font-weight: 600;
+    border-radius: 9999px;
+    cursor: pointer;
+    white-space: nowrap;
+    flex-shrink: 0;
+    line-height: 1.4;
+    transition: all var(--transition-fast);
+}
+
+.btn-apply-settings:hover {
+    background: var(--brand-primary);
+    color: var(--text-inverse);
+}
+
+.btn-apply-settings.htmx-request {
+    opacity: 0.6;
+    pointer-events: none;
 }
 
 .meta-settings {

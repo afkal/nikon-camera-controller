@@ -1,5 +1,6 @@
 """Image viewer UI component."""
 
+import json
 from datetime import datetime
 from pathlib import Path
 
@@ -56,6 +57,7 @@ def image_viewer_with_photo(
     settings_summary: str | None = None,
     captured_at: str | None = None,
     file_size: str | None = None,
+    apply_settings: dict[str, str] | None = None,
 ) -> Div:
     """Render the image viewer with a captured photo.
 
@@ -64,6 +66,8 @@ def image_viewer_with_photo(
         settings_summary: Short text like "ISO 400 · 1/250 · f/5.6".
         captured_at: Human-readable timestamp.
         file_size: File size string (e.g. "2.8 MB").
+        apply_settings: If provided, adds a compact "Apply" button
+            inline after the settings in the metadata bar.
     """
     meta_items = []
     if captured_at:
@@ -73,6 +77,17 @@ def image_viewer_with_photo(
     if settings_summary:
         meta_items.append(
             Span(settings_summary, cls="meta-item meta-settings")
+        )
+    if apply_settings:
+        meta_items.append(
+            Button(
+                "Apply",
+                cls="btn-apply-settings",
+                hx_post="/api/camera/settings",
+                hx_target="#controls-content",
+                hx_swap="innerHTML",
+                hx_vals=json.dumps(apply_settings),
+            )
         )
     if file_size:
         meta_items.append(
@@ -105,6 +120,7 @@ def preview_panel(
     captured_at: str | None = None,
     file_size: str | None = None,
     error: str | None = None,
+    apply_settings: dict[str, str] | None = None,
     hx_swap_oob: bool = False,
 ) -> Div:
     """Render the full preview panel (header + viewer + capture button).
@@ -112,6 +128,7 @@ def preview_panel(
     This is the HTMX-swappable outer panel.
 
     Args:
+        apply_settings: If provided, shows "Apply" button in metadata bar.
         hx_swap_oob: If True, adds hx-swap-oob="true" for out-of-band
                      swapping (used when another element is the primary
                      HTMX target, e.g. connect/disconnect updates).
@@ -144,6 +161,7 @@ def preview_panel(
                 settings_summary=settings_summary,
                 captured_at=captured_at,
                 file_size=file_size,
+                apply_settings=apply_settings,
             )
         )
     else:

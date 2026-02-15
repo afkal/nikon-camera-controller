@@ -342,3 +342,61 @@ class TestRestoreFromDisk:
         assert record.histogram_png == "IMG_20260215_120000_hist.png"
         # Should still have metrics
         assert record.average_brightness is not None
+
+    def test_restore_parses_exif_settings(
+        self, session: CaptureSession, tmp_path: Path
+    ) -> None:
+        """EXIF data populates iso, shutter_speed, aperture fields."""
+        # Create image with EXIF data
+        from PIL.ExifTags import Base as ExifBase
+
+        img = Image.new("RGB", (20, 20), (128, 128, 128))
+        exif = img.getexif()
+        exif[ExifBase.ISOSpeedRatings] = 400
+        exif[ExifBase.ExposureTime] = 1 / 250
+        exif[ExifBase.FNumber] = 5.6
+        exif[ExifBase.WhiteBalance] = 0  # Auto
+        img.save(tmp_path / "IMG_20260215_120000.jpg", exif=exif.tobytes())
+
+        session.restore_from_disk(tmp_path)
+
+        record = session.captures[0]
+        assert record.iso == "400"
+        assert record.shutter_speed == "1/250"
+        assert record.aperture == "f/5.6"
+        assert record.white_balance == "Auto"
+        assert "ISO 400" in record.settings_summary
+        assert "1/250" in record.settings_summary
+
+    def test_restore_builds_settings_summary_from_exif(
+        self, session: CaptureSession, tmp_path: Path
+    ) -> None:
+        """settings_summary is built from EXIF when available."""
+        from PIL.ExifTags import Base as ExifBase
+
+        img = Image.new("RGB", (20, 20), (128, 128, 128))
+        exif = img.getexif()
+        exif[ExifBase.ISOSpeedRatings] = 800
+        exif[ExifBase.FNumber] = 2.8
+        img.save(tmp_path / "IMG_20260215_120000.jpg", exif=exif.tobytes())
+
+        session.restore_from_disk(tmp_path)
+
+        record = session.captures[0]
+        assert "ISO 800" in record.settings_summary
+        assert "f/2.8" in record.settings_summary
+
+    def test_restore_no_exif_empty_settings(
+        self, session: CaptureSession, tmp_path: Path
+    ) -> None:
+        """Image without EXIF leaves settings fields empty."""
+        img = Image.new("RGB", (20, 20), (128, 128, 128))
+        img.save(tmp_path / "IMG_20260215_120000.jpg")
+
+        session.restore_from_disk(tmp_path)
+
+        record = session.captures[0]
+        assert record.iso == ""
+        assert record.shutter_speed == ""
+        assert record.aperture == ""
+        assert record.settings_summary == ""

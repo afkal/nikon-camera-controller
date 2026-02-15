@@ -181,14 +181,13 @@ Speksissä on joitain kohtia jotka eivät vastaa FastHTML:n nykyistä API:a:
 
 **Hyväksyntä:** Ota 3+ kuvaa → kaikki näkyvät sivupalkissa → klikkaa aiempaa → analyysi vaihtuu.
 
-### 5.3 Settings Presets
-- [ ] Luo preset-tallennuslogiikka (JSON-tiedostot `data/presets/`-kansiossa)
-- [ ] UI: "Save preset" -nappi + nimi-kenttä
-- [ ] UI: Preset-valitsin (dropdown) — lataa tallennetut asetukset
-- [ ] Reitit: `POST /api/camera/presets` (tallenna), `GET /api/camera/presets` (listaa), `GET /api/camera/presets/{name}` (lataa)
-- [ ] Lataus asettaa kameran asetukset ja päivittää UI:n
+### 5.3 Apply Settings from Capture
+- [ ] Tallenna EXIF-parametrit (ISO, shutter, aperture, WB) `CaptureRecord`-luokkaan restore-vaiheessa
+- [ ] Lisää "Apply settings" -nappi kuvan katselunäkymään (historian kuvan klikkauksen jälkeen)
+- [ ] Nappi kutsuu `POST /api/camera/settings` kuvan EXIF-parametreilla → kamera saa samat asetukset
+- [ ] Päivitä controls-paneeli OOB-swapilla napin painalluksen jälkeen
 
-**Hyväksyntä:** Tallenna preset "Studio portrait" → vaihda asetuksia → lataa preset → asetukset palautuvat. Presetit säilyvät sovelluksen uudelleenkäynnistyksen yli.
+**Hyväksyntä:** Ota kuva → klikkaa sitä historiasta → paina "Apply settings" → kameran asetukset vastaavat kuvan EXIF-dataa. Toimii myös levyltä ladatuille kuville.
 
 ---
 
@@ -238,7 +237,7 @@ Speksissä on joitain kohtia jotka eivät vastaa FastHTML:n nykyistä API:a:
 | 4.3 | Analyysi-UI | Histogrammi + metriikat selaimessa |
 | 5.1 | Capture History | In-memory historia |
 | 5.2 | Historia-UI | Kuvien selaus sivupalkissa |
-| 5.3 | Presets | Asetusten tallennus/lataus |
+| 5.3 | Apply from Capture | Kuvan EXIF-asetusten asettaminen kameralle |
 | 6.1 | UI-polish | Viimeistellyt tyylit + shortcuts |
 | 6.2 | Testit ja laatu | Kattavat testit, lintteri puhdas |
 | 6.3 | Dokumentaatio | README, docstringit, changelog |
@@ -280,4 +279,4 @@ Mahdollisia jatkokehityskohteita MVP:n jälkeen:
 - [ ] Focus stacking -automaatio
 - [ ] Timelapse-ohjaus
 - [ ] Tethered shooting -tila (automaattinen kuvien siirto koneelle)
-- [ ] Preset-järjestelmä (tallenna/lataa kamera-asetukset)
+- [ ] Nimetyt presetit (tallenna/lataa kamera-asetukset JSON-tiedostoina)

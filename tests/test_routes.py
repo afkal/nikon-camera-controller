@@ -407,6 +407,45 @@ def test_view_capture_shows_metrics(client):
     assert "8.5%" in response.text
 
 
+def test_view_capture_shows_apply_button(client):
+    """GET /api/capture/{id} shows Apply button when settings exist."""
+    from pathlib import Path
+
+    from app.main import session
+    from app.storage.session import CaptureRecord
+
+    session.add(CaptureRecord(
+        capture_id=0,
+        filename="with_settings.jpg",
+        image_path=Path("/fake/with_settings.jpg"),
+        iso="400",
+        shutter_speed="1/250",
+        aperture="f/5.6",
+    ))
+
+    response = client.get("/api/capture/1")
+    assert response.status_code == 200
+    assert "Apply" in response.text
+
+
+def test_view_capture_no_apply_button_without_settings(client):
+    """GET /api/capture/{id} hides Apply button when no settings."""
+    from pathlib import Path
+
+    from app.main import session
+    from app.storage.session import CaptureRecord
+
+    session.add(CaptureRecord(
+        capture_id=0,
+        filename="no_settings.jpg",
+        image_path=Path("/fake/no_settings.jpg"),
+    ))
+
+    response = client.get("/api/capture/1")
+    assert response.status_code == 200
+    assert "btn-apply-settings" not in response.text
+
+
 # --- Session restore API tests ---
 
 
