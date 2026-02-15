@@ -405,3 +405,37 @@ def test_view_capture_shows_metrics(client):
     # Metrics should show the stored values
     assert "200" in response.text
     assert "8.5%" in response.text
+
+
+# --- Session restore API tests ---
+
+
+def test_restore_empty_shows_no_captures(client):
+    """POST /api/session/restore with no files on disk → empty history."""
+    with patch("app.main._captures_dir") as mock_dir:
+        mock_dir.is_dir.return_value = True
+        mock_dir.glob.return_value = []
+        response = client.post("/api/session/restore")
+        assert response.status_code == 200
+
+
+def test_restore_loads_captures(client, tmp_path):
+    """POST /api/session/restore loads files from disk."""
+    # Create fake captured images
+    img1 = tmp_path / "IMG_20260215_120000.jpg"
+    img2 = tmp_path / "IMG_20260215_120100.jpg"
+    img1.write_bytes(b"\xff\xd8" + b"\x00" * 500)
+    img2.write_bytes(b"\xff\xd8" + b"\x00" * 800)
+
+    with patch("app.main._captures_dir", tmp_path):
+        response = client.post("/api/session/restore")
+        assert response.status_code == 200
+        assert "IMG_20260215_120000.jpg" in response.text
+        assert "IMG_20260215_120100.jpg" in response.text
+        assert "2 captures" in response.text
+
+
+def test_restore_button_shown_when_empty(client):
+    """GET / with empty session shows the restore button."""
+    response = client.get("/")
+    assert "Load previous captures" in response.text

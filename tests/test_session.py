@@ -162,3 +162,120 @@ class TestCaptureSession:
         )
         session.add(r2)
         assert r2.capture_id == 1  # Reset to 1
+
+
+class TestRestoreFromDisk:
+    def test_restores_jpg_files(
+        self, session: CaptureSession, tmp_path: Path
+    ) -> None:
+        """Finds IMG_*.jpg files and creates records."""
+        (tmp_path / "IMG_20260215_120000.jpg").write_bytes(b"\xff" * 100)
+        (tmp_path / "IMG_20260215_120100.jpg").write_bytes(b"\xff" * 200)
+
+        count = session.restore_from_disk(tmp_path)
+        assert count == 2
+        assert session.count == 2
+
+    def test_restores_in_chronological_order(
+        self, session: CaptureSession, tmp_path: Path
+    ) -> None:
+        """Files should be sorted by name (chronological)."""
+        (tmp_path / "IMG_20260215_120100.jpg").write_bytes(b"\xff" * 100)
+        (tmp_path / "IMG_20260215_120000.jpg").write_bytes(b"\xff" * 100)
+
+        session.restore_from_disk(tmp_path)
+        assert session.captures[0].filename == "IMG_20260215_120000.jpg"
+        assert session.captures[1].filename == "IMG_20260215_120100.jpg"
+
+    def test_parses_capture_time(
+        self, session: CaptureSession, tmp_path: Path
+    ) -> None:
+        """Extracts time from filename."""
+        (tmp_path / "IMG_20260215_143052.jpg").write_bytes(b"\xff" * 100)
+
+        session.restore_from_disk(tmp_path)
+        assert session.captures[0].captured_at == "14:30:52"
+
+    def test_calculates_file_size(
+        self, session: CaptureSession, tmp_path: Path
+    ) -> None:
+        """File size is human-readable."""
+        (tmp_path / "IMG_20260215_120000.jpg").write_bytes(b"\xff" * 2048)
+
+        session.restore_from_disk(tmp_path)
+        assert "KB" in session.captures[0].file_size
+
+    def test_picks_up_histogram_png(
+        self, session: CaptureSession, tmp_path: Path
+    ) -> None:
+        """Finds corresponding *_hist.png if present."""
+        (tmp_path / "IMG_20260215_120000.jpg").write_bytes(b"\xff" * 100)
+        (tmp_path / "IMG_20260215_120000_hist.png").write_bytes(b"\x89" * 100)
+
+        session.restore_from_disk(tmp_path)
+        assert session.captures[0].histogram_png == "IMG_20260215_120000_hist.png"
+
+    def test_no_histogram_png(
+        self, session: CaptureSession, tmp_path: Path
+    ) -> None:
+        """No histogram if *_hist.png doesn't exist."""
+        (tmp_path / "IMG_20260215_120000.jpg").write_bytes(b"\xff" * 100)
+
+        session.restore_from_disk(tmp_path)
+        assert session.captures[0].histogram_png is None
+
+    def test_ignores_non_img_files(
+        self, session: CaptureSession, tmp_path: Path
+    ) -> None:
+        """Only picks up IMG_*.jpg files."""
+        (tmp_path / "IMG_20260215_120000.jpg").write_bytes(b"\xff" * 100)
+        (tmp_path / "random_photo.jpg").write_bytes(b"\xff" * 100)
+        (tmp_path / "IMG_20260215_120000_hist.png").write_bytes(b"\x89" * 100)
+        (tmp_path / "notes.txt").write_bytes(b"hello")
+
+        count = session.restore_from_disk(tmp_path)
+        assert count == 1
+        assert session.count == 1
+
+    def test_skips_already_loaded(
+        self, session: CaptureSession, tmp_path: Path
+    ) -> None:
+        """Doesn't duplicate files already in session."""
+        img = tmp_path / "IMG_20260215_120000.jpg"
+        img.write_bytes(b"\xff" * 100)
+
+        # Add manually first
+        session.add(CaptureRecord(
+            capture_id=0,
+            filename="IMG_20260215_120000.jpg",
+            image_path=img,
+        ))
+
+        count = session.restore_from_disk(tmp_path)
+        assert count == 0
+        assert session.count == 1
+
+    def test_empty_directory(
+        self, session: CaptureSession, tmp_path: Path
+    ) -> None:
+        """Empty directory restores nothing."""
+        count = session.restore_from_disk(tmp_path)
+        assert count == 0
+
+    def test_nonexistent_directory(
+        self, session: CaptureSession, tmp_path: Path
+    ) -> None:
+        """Nonexistent directory returns 0."""
+        count = session.restore_from_disk(tmp_path / "nope")
+        assert count == 0
+
+    def test_assigns_sequential_ids(
+        self, session: CaptureSession, tmp_path: Path
+    ) -> None:
+        """Restored records get proper sequential IDs."""
+        (tmp_path / "IMG_20260215_120000.jpg").write_bytes(b"\xff" * 100)
+        (tmp_path / "IMG_20260215_120100.jpg").write_bytes(b"\xff" * 100)
+
+        session.restore_from_disk(tmp_path)
+        assert session.captures[0].capture_id == 1
+        assert session.captures[1].capture_id == 2

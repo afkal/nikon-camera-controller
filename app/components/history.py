@@ -1,6 +1,6 @@
 """Capture history UI component — sidebar list of past captures."""
 
-from fasthtml.common import Div, Img, P, Span
+from fasthtml.common import Button, Div, Img, P, Span
 
 from app.storage.session import CaptureRecord
 
@@ -70,6 +70,13 @@ def history_panel(
     if not records:
         return Div(
             P("Captures will appear here", cls="empty-state-small"),
+            Button(
+                "Load previous captures",
+                cls="btn btn-restore",
+                hx_post="/api/session/restore",
+                hx_target="#history-content",
+                hx_swap="outerHTML",
+            ),
             **attrs,
         )
 

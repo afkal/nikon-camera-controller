@@ -501,6 +501,24 @@ def _capture_error_response(error: str):
     )
 
 
+# --- Session restore ---
+
+
+@rt("/api/session/restore")
+def post():
+    """Restore capture history from disk.
+
+    Scans data/captures/ for IMG_*.jpg files and loads them
+    into the in-memory session. Returns the updated history
+    panel plus badge as OOB swap.
+    """
+    session.restore_from_disk(_captures_dir)
+    return (
+        history_panel(session.captures),
+        history_badge(session.count, hx_swap_oob=True),
+    )
+
+
 # --- Static file mounts ---
 # Serve captured images at /captures/. Uses Starlette Mount instead of
 # a FastHTML route because FastHTML's built-in /{fname:path}.{ext:static}

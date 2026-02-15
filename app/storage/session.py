@@ -2,13 +2,17 @@
 
 Stores a list of capture records (image path + analysis + settings)
 so the UI can show history, switch between captures, and compare
-exposure between shots. Resets on app restart — no persistence.
+exposure between shots. Resets on app restart — no persistence,
+but can optionally restore from disk via ``restore_from_disk()``.
 """
 
+import logging
 from dataclasses import dataclass
 from datetime import datetime
 from pathlib import Path
 from typing import Any
+
+logger = logging.getLogger(__name__)
 
 
 @dataclass
@@ -114,6 +118,82 @@ class CaptureSession:
         if len(self._captures) < 2:
             return None
         return self._captures[-2]
+
+    def restore_from_disk(self, captures_dir: Path) -> int:
+        """Scan a directory for previously captured images and load them.
+
+        Finds ``IMG_*.jpg`` files (our naming convention), sorts by name
+        (chronological), and creates a CaptureRecord for each. Also
+        picks up the corresponding ``*_hist.png`` histogram if present.
+
+        Skips files already in the session (by filename) so it's safe
+        to call after new captures have been added.
+
+        Args:
+            captures_dir: Path to the captures directory.
+
+        Returns:
+            Number of records restored.
+        """
+        if not captures_dir.is_dir():
+            return 0
+
+        existing_filenames = {c.filename for c in self._captures}
+
+        # Find IMG_*.jpg files, sorted by name (= chronological)
+        image_files = sorted(captures_dir.glob("IMG_*.jpg"))
+
+        restored = 0
+        for image_path in image_files:
+            if image_path.name in existing_filenames:
+                continue
+
+            # Extract metadata from file
+            captured_at = self._parse_capture_time(image_path)
+            file_size = self._format_file_size(image_path.stat().st_size)
+
+            # Check for corresponding histogram PNG
+            hist_png_path = image_path.with_name(
+                image_path.stem + "_hist.png"
+            )
+            hist_png_name = (
+                hist_png_path.name if hist_png_path.exists() else None
+            )
+
+            record = CaptureRecord(
+                capture_id=0,  # assigned by add()
+                filename=image_path.name,
+                image_path=image_path,
+                captured_at=captured_at,
+                file_size=file_size,
+                histogram_png=hist_png_name,
+            )
+            self.add(record)
+            restored += 1
+
+        logger.info("Restored %d captures from %s", restored, captures_dir)
+        return restored
+
+    @staticmethod
+    def _parse_capture_time(image_path: Path) -> str:
+        """Extract capture time from filename IMG_YYYYMMDD_HHMMSS.jpg."""
+        stem = image_path.stem
+        try:
+            ts_str = stem.replace("IMG_", "")
+            dt = datetime.strptime(ts_str, "%Y%m%d_%H%M%S")
+            return dt.strftime("%H:%M:%S")
+        except (ValueError, IndexError):
+            return ""
+
+    @staticmethod
+    def _format_file_size(size_bytes: int) -> str:
+        """Format file size in bytes to human-readable string."""
+        if size_bytes < 1024:
+            return f"{size_bytes} B"
+        elif size_bytes < 1024 * 1024:
+            return f"{size_bytes / 1024:.1f} KB"
+        else:
+            return f"{size_bytes / (1024 * 1024):.1f} MB"
 
     def clear(self) -> None:
         """Reset session — remove all captures."""

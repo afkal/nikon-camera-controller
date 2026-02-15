@@ -166,19 +166,18 @@ Speksissä on joitain kohtia jotka eivät vastaa FastHTML:n nykyistä API:a:
 ## Phase 5: Iterative Workflow
 
 ### 5.1 Capture History
-- [ ] Luo `app/storage/session.py` — `CaptureHistory`-luokka (in-memory)
-- [ ] Tallenna jokainen kuvan otto + analyysi historiaan
+- [x] Luo `app/storage/session.py` — `CaptureSession`-luokka (in-memory)
+- [x] Tallenna jokainen kuvan otto + analyysi historiaan
 - [ ] Rajoitus: viimeiset 50 kuvaa muistissa (konfiguroitava)
-- [ ] Toteuta `get_recent(n)` — palauttaa viimeisimmät n kuvaa
+- [x] Toteuta `get()`, `latest`, `previous`, `captures` — palauttaa kuvia historiasta
 
 **Hyväksyntä:** Ota useita kuvia → historia kasvaa. Sovelluksen uudelleenkäynnistys tyhjentää historian (mutta kuvat säilyvät levyllä).
 
 ### 5.2 Historia-UI ja navigaatio
-- [ ] Lisää sivupalkkiin capture-historia (thumbnailit + asetustiivistelmä)
-- [ ] Klikkaa aiempaa kuvaa → preview-paneeli päivittyy (kuva + histogrammi + metriikat)
-- [ ] Korostus: aktiivinen/valittu kuva erottuu listasta
-- [ ] Reitti `GET /api/captures` — palauttaa historialistan fragmenttina
-- [ ] Reitti `GET /api/captures/{id}` — palauttaa yksittäisen kuvan tiedot
+- [x] Lisää sivupalkkiin capture-historia (thumbnailit + asetustiivistelmä)
+- [x] Klikkaa aiempaa kuvaa → preview-paneeli päivittyy (kuva + histogrammi + metriikat)
+- [x] Korostus: aktiivinen/valittu kuva erottuu listasta
+- [x] Reitti `GET /api/capture/{id}` — palauttaa yksittäisen kuvan tiedot (+ OOB-päivitykset)
 
 **Hyväksyntä:** Ota 3+ kuvaa → kaikki näkyvät sivupalkissa → klikkaa aiempaa → analyysi vaihtuu.
 
