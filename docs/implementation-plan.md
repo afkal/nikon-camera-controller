@@ -58,12 +58,12 @@ Speksissä on joitain kohtia jotka eivät vastaa FastHTML:n nykyistä API:a:
 ## Phase 2: Camera Connection
 
 ### 2.1 CameraController-luokan perusrakenne
-- [ ] Luo `app/camera/controller.py` — `CameraController`-luokka
-- [ ] Toteuta `connect()` — gPhoto2-yhteys, PTPCamera-agentin tappaminen macOS:llä
-- [ ] Toteuta `disconnect()`
-- [ ] Toteuta `get_status()` — palauttaa dict (connected, battery, model, storage_free)
-- [ ] Toteuta virhekäsittely: `CameraConnectionError`, `CameraNotConnectedError` (oma exceptions-moduuli)
-- [ ] Kirjoita testit: `tests/test_camera.py` — mock-pohjaiset yksikkötestit (ei vaadi oikeaa kameraa)
+- [x] Luo `app/camera/controller.py` — `CameraController`-luokka
+- [x] Toteuta `connect()` — gPhoto2-yhteys, PTPCamera-agentin tappaminen macOS:llä
+- [x] Toteuta `disconnect()`
+- [x] Toteuta `get_status()` — palauttaa dict (connected, battery, model, storage_free)
+- [x] Toteuta virhekäsittely: `CameraConnectionError`, `CameraNotConnectedError` (oma exceptions-moduuli)
+- [x] Kirjoita testit: `tests/test_camera.py` — mock-pohjaiset yksikkötestit (ei vaadi oikeaa kameraa)
 
 **Hyväksyntä:** Testit menevät läpi. Ihminen voi halutessaan testata oikealla kameralla.
 
