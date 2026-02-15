@@ -37,11 +37,11 @@ Speksissä on joitain kohtia jotka eivät vastaa FastHTML:n nykyistä API:a:
 **Hyväksyntä:** Ihminen tarkistaa rakenteen, ajaa `pip install -r requirements.txt`
 
 ### 1.2 FastHTML-sovelluksen runko
-- [ ] Luo `app/main.py` minimaalisella FastHTML-sovelluksella
-- [ ] Etusivu (`/`) renderöi peruslayoutin (header, tyhjät paneelit)
-- [ ] Staattisten tiedostojen tarjoilu (`app/static/`)
-- [ ] Perus-CSS (`app/static/css/style.css`) — layout-grid, värit speksistä
-- [ ] Sovellus käynnistyy: `python app/main.py` → `localhost:5002`
+- [x] Luo `app/main.py` minimaalisella FastHTML-sovelluksella
+- [x] Etusivu (`/`) renderöi peruslayoutin (header, tyhjät paneelit)
+- [x] Staattisten tiedostojen tarjoilu (`app/static/`)
+- [x] Perus-CSS (`app/static/css/style.css`) — layout-grid, värit speksistä
+- [x] Sovellus käynnistyy: `python app/main.py` → `localhost:5002`
 
 **Hyväksyntä:** Ihminen avaa selaimen, näkee tyhjän layout-pohjan
 
