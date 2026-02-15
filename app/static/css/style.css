@@ -657,10 +657,29 @@ body {
     border-color: var(--color-danger);
 }
 
-/* HTMX loading state */
+/* HTMX loading state — generic */
 .btn.htmx-request {
     opacity: 0.6;
     pointer-events: none;
+}
+
+/* Connect button loading: amber pulsing border */
+.btn-connect.htmx-request {
+    background: var(--surface-3);
+    color: var(--color-warning);
+    border-color: var(--color-warning);
+    animation: btn-loading-pulse 1s ease-in-out infinite;
+}
+
+.btn-disconnect.htmx-request {
+    color: var(--text-tertiary);
+    border-color: var(--border-default);
+    animation: btn-loading-pulse 1s ease-in-out infinite;
+}
+
+@keyframes btn-loading-pulse {
+    0%, 100% { opacity: 0.7; }
+    50% { opacity: 0.35; }
 }
 
 /* --- Connect Button Area --- */
@@ -799,17 +818,42 @@ body {
     line-height: 1.4;
 }
 
-/* --- Capture Button --- */
+/* --- Capture Button (shutter release) --- */
 .btn-capture {
     background: var(--brand-primary);
     color: var(--text-inverse);
     border-color: var(--brand-primary);
     width: auto;
-    padding: 5px 16px;
-    font-size: 0.78rem;
+    padding: 6px 12px;
     display: inline-flex;
     align-items: center;
-    gap: var(--space-xs);
+    justify-content: center;
+    border-radius: var(--radius-sm);
+}
+
+.shutter-icon {
+    display: block;
+    width: 18px;
+    height: 18px;
+    border-radius: 50%;
+    background: transparent;
+    border: 2px solid var(--text-inverse);
+    position: relative;
+    transition: all var(--transition-base);
+}
+
+/* Center dot inside the ring */
+.shutter-icon::after {
+    content: '';
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    background: var(--text-inverse);
+    transition: all var(--transition-base);
 }
 
 .btn-capture:hover {
@@ -823,15 +867,35 @@ body {
     transform: translateY(0);
 }
 
+.btn-capture:active .shutter-icon {
+    transform: scale(0.85);
+}
+
 .btn-capture.btn-disabled {
     opacity: 0.35;
     cursor: not-allowed;
     pointer-events: none;
 }
 
+/* Capturing state: shutter icon pulses amber */
 .btn-capture.htmx-request {
-    opacity: 0.6;
     pointer-events: none;
+    background: var(--surface-3);
+    border-color: var(--border-strong);
+}
+
+.btn-capture.htmx-request .shutter-icon {
+    border-color: var(--color-warning);
+    animation: shutter-pulse 0.8s ease-in-out infinite;
+}
+
+.btn-capture.htmx-request .shutter-icon::after {
+    background: var(--color-warning);
+}
+
+@keyframes shutter-pulse {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.4; }
 }
 
 /* --- Preview Header --- */
@@ -1116,8 +1180,10 @@ body {
 }
 
 .btn-restore.htmx-request {
-    opacity: 0.6;
     pointer-events: none;
+    color: var(--color-warning);
+    border-color: var(--color-warning);
+    animation: btn-loading-pulse 1s ease-in-out infinite;
 }
 
 /* --- Responsive --- */

@@ -16,7 +16,7 @@ def capture_button(connected: bool, capturing: bool = False) -> Div:
     if not connected:
         return Div(
             Button(
-                "📷  Capture",
+                Span(cls="shutter-icon"),
                 cls="btn btn-capture btn-disabled",
                 disabled=True,
             ),
@@ -25,7 +25,7 @@ def capture_button(connected: bool, capturing: bool = False) -> Div:
 
     return Div(
         Button(
-            "📷  Capture",
+            Span(cls="shutter-icon"),
             cls="btn btn-capture",
             hx_post="/api/capture",
             hx_target="#preview-panel",

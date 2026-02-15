@@ -42,12 +42,15 @@ def suggestion_card(suggestion: Suggestion) -> Div:
 
 def advisor_display(
     suggestions: list[Suggestion] | None = None,
+    has_analysis: bool = False,
     hx_swap_oob: bool = False,
 ) -> Div:
     """Render the advisor panel with exposure suggestions.
 
     Args:
         suggestions: List of Suggestion objects. None or empty = good exposure.
+        has_analysis: True if an image has been analyzed (distinguishes
+            "no suggestions because exposure is good" from "no image yet").
         hx_swap_oob: If True, adds hx-swap-oob for OOB updates.
     """
     attrs: dict = {"id": "advisor-display"}
@@ -55,8 +58,13 @@ def advisor_display(
         attrs["hx_swap_oob"] = "true"
 
     if not suggestions:
+        if has_analysis:
+            return Div(
+                P("Exposure looks good", cls="advisor-ok"),
+                **attrs,
+            )
         return Div(
-            P("Exposure looks good", cls="advisor-ok"),
+            P("Capture a photo to see suggestions", cls="advisor-ok"),
             **attrs,
         )
 

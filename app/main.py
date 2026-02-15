@@ -68,9 +68,21 @@ camera = CameraController()
 analyzer = ImageAnalyzer()
 session = CaptureSession()
 
+# SVG favicon: gold circle (lens) on dark background
+_favicon_svg = (
+    "data:image/svg+xml,"
+    "%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E"
+    "%3Crect width='32' height='32' rx='6' fill='%23c8a455'/%3E"
+    "%3Ccircle cx='16' cy='16' r='9' fill='none' stroke='%231a1a1a' "
+    "stroke-width='2.5' opacity='0.7'/%3E"
+    "%3Ccircle cx='16' cy='16' r='4' fill='%231a1a1a' opacity='0.5'/%3E"
+    "%3C/svg%3E"
+)
+
 app, rt = fast_app(
     static_path=str(Path(__file__).parent / "static"),
     hdrs=(
+        Link(rel="icon", type="image/svg+xml", href=_favicon_svg),
         Link(rel="stylesheet", href="/css/style.css"),
         Link(
             rel="stylesheet",
@@ -345,6 +357,7 @@ def post():
             )
             advisor_oob = advisor_display(
                 suggestions=suggestions,
+                has_analysis=True,
                 hx_swap_oob=True,
             )
         except Exception:
@@ -459,6 +472,7 @@ def get(capture_id: int):
         )
         advisor_oob = advisor_display(
             suggestions=suggestions,
+            has_analysis=True,
             hx_swap_oob=True,
         )
 
