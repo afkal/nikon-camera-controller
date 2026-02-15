@@ -182,10 +182,10 @@ Speksissä on joitain kohtia jotka eivät vastaa FastHTML:n nykyistä API:a:
 **Hyväksyntä:** Ota 3+ kuvaa → kaikki näkyvät sivupalkissa → klikkaa aiempaa → analyysi vaihtuu.
 
 ### 5.3 Apply Settings from Capture
-- [ ] Tallenna EXIF-parametrit (ISO, shutter, aperture, WB) `CaptureRecord`-luokkaan restore-vaiheessa
-- [ ] Lisää "Apply settings" -nappi kuvan katselunäkymään (historian kuvan klikkauksen jälkeen)
-- [ ] Nappi kutsuu `POST /api/camera/settings` kuvan EXIF-parametreilla → kamera saa samat asetukset
-- [ ] Päivitä controls-paneeli OOB-swapilla napin painalluksen jälkeen
+- [x] Tallenna EXIF-parametrit (ISO, shutter, aperture, WB) `CaptureRecord`-luokkaan restore-vaiheessa
+- [x] Lisää "Apply settings" -nappi kuvan katselunäkymään (historian kuvan klikkauksen jälkeen)
+- [x] Nappi kutsuu `POST /api/camera/settings` kuvan EXIF-parametreilla → kamera saa samat asetukset
+- [x] Päivitä controls-paneeli OOB-swapilla napin painalluksen jälkeen
 
 **Hyväksyntä:** Ota kuva → klikkaa sitä historiasta → paina "Apply settings" → kameran asetukset vastaavat kuvan EXIF-dataa. Toimii myös levyltä ladatuille kuville.
 
