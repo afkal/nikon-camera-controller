@@ -36,6 +36,14 @@ def test_homepage_contains_panels(client):
     assert "metrics-display" in html
 
 
+def test_homepage_contains_right_sidebar(client):
+    """GET / should contain the right analysis sidebar."""
+    response = client.get("/")
+    html = response.text
+    assert "sidebar-right" in html
+    assert "advisor-display" in html
+
+
 def test_homepage_shows_connect_button(client):
     """GET / should show the Connect Camera button when disconnected."""
     response = client.get("/")

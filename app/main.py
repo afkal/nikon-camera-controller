@@ -143,40 +143,40 @@ def get():
                 ),
                 cls="sidebar",
             ),
-            # Main content area
+            # Center: image viewer
             Div(
-                # Image viewer
                 preview_panel(
                     connected=status.get("connected", False),
                 ),
-                # Analysis row
-                Div(
-                    # Histogram
-                    Section(
-                        Div(
-                            Span("Histogram", cls="section-title"),
-                            cls="section-header",
-                        ),
-                        histogram_display(),
-                        cls="card",
-                    ),
-                    # Metrics + Advisor
-                    Section(
-                        Div(
-                            Span("Exposure Metrics", cls="section-title"),
-                            cls="section-header",
-                        ),
-                        metrics_display(),
-                        Div(
-                            Span("Advisor", cls="section-title"),
-                            cls="section-header advisor-header",
-                        ),
-                        advisor_display(),
-                        cls="card",
-                    ),
-                    cls="analysis-row",
-                ),
                 cls="content-area",
+            ),
+            # Right sidebar: analysis panels
+            Aside(
+                Section(
+                    Div(
+                        Span("Histogram", cls="section-title"),
+                        cls="section-header",
+                    ),
+                    histogram_display(),
+                    cls="card",
+                ),
+                Section(
+                    Div(
+                        Span("Exposure Metrics", cls="section-title"),
+                        cls="section-header",
+                    ),
+                    metrics_display(),
+                    cls="card",
+                ),
+                Section(
+                    Div(
+                        Span("Advisor", cls="section-title"),
+                        cls="section-header",
+                    ),
+                    advisor_display(),
+                    cls="card",
+                ),
+                cls="sidebar-right",
             ),
             cls="main-layout",
         ),

@@ -208,7 +208,7 @@ body {
 /* --- Main Layout --- */
 .main-layout {
     display: grid;
-    grid-template-columns: 260px 1fr;
+    grid-template-columns: 260px 1fr 320px;
     flex: 1;
     max-width: 1600px;
     margin: 0 auto;
@@ -232,6 +232,20 @@ body {
 .sidebar-section {
     padding: 0 var(--space-lg);
     margin-bottom: var(--space-lg);
+}
+
+/* --- Right Sidebar (Analysis) --- */
+.sidebar-right {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-md);
+    border-left: 1px solid var(--border-subtle);
+    background: var(--surface-1);
+    padding: var(--space-md);
+    height: calc(100vh - 48px);
+    position: sticky;
+    top: 48px;
+    overflow-y: auto;
 }
 
 .section-header {
@@ -430,12 +444,7 @@ body {
     font-weight: 400 !important;
 }
 
-/* --- Analysis Row --- */
-.analysis-row {
-    display: grid;
-    grid-template-columns: 1fr 1fr;
-    gap: var(--space-md);
-}
+/* (analysis-row removed — panels now in sidebar-right) */
 
 .analysis-area {
     padding: var(--space-md);
@@ -923,7 +932,7 @@ body {
 
 .viewer-image {
     max-width: 100%;
-    max-height: calc(100vh - 380px);
+    max-height: calc(100vh - 180px);
     height: auto;
     border-radius: var(--radius-xs);
     object-fit: contain;
@@ -1008,10 +1017,6 @@ body {
 }
 
 /* --- Advisor Panel --- */
-.advisor-header {
-    margin-top: 0;
-    border-top: 1px solid var(--border-subtle);
-}
 
 .advisor-ok {
     font-size: 0.78rem;
@@ -1192,12 +1197,27 @@ body {
         grid-template-columns: 220px 1fr;
     }
 
-    .analysis-row {
-        grid-template-columns: 1fr;
+    .sidebar-right {
+        position: static;
+        height: auto;
+        overflow-y: visible;
+        border-left: none;
+        border-top: 1px solid var(--border-subtle);
+        grid-column: 2;
+        flex-direction: row;
+        flex-wrap: wrap;
+    }
+
+    .sidebar-right > .card {
+        flex: 1 1 280px;
+    }
+
+    .content-area {
+        height: auto;
     }
 
     .viewer-image {
-        max-height: calc(100vh - 420px);
+        max-height: calc(100vh - 240px);
     }
 }
 
@@ -1212,6 +1232,11 @@ body {
         height: auto;
         border-right: none;
         border-bottom: 1px solid var(--border-subtle);
+    }
+
+    .sidebar-right {
+        grid-column: auto;
+        flex-direction: column;
     }
 
     .content-area {
