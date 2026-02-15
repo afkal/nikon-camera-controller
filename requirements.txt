@@ -1,0 +1,14 @@
+# Core
+python-fasthtml==0.12.41
+gphoto2==2.6.3
+
+# Image processing
+Pillow==12.1.1
+numpy==2.4.2
+matplotlib==3.10.8
+
+# Development
+pytest==9.0.2
+ruff==0.15.1
+mypy==1.19.1
+black==26.1.0
