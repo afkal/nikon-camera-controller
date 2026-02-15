@@ -4,6 +4,8 @@ Web-based application for controlling Nikon cameras via USB. Provides a browser 
 
 Built with Python/[FastHTML](https://fastht.ml) + HTMX. Runs locally on macOS.
 
+![NCC — browsing capture history with exposure analysis](docs/screenshots/offline-history-view.png)
+
 ## Supported Cameras
 
 - Nikon D7500
