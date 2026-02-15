@@ -104,10 +104,10 @@ Speksissä on joitain kohtia jotka eivät vastaa FastHTML:n nykyistä API:a:
 ## Phase 3: Image Capture & Display
 
 ### 3.1 Kuvanotto-toiminto
-- [ ] Toteuta `CameraController.capture()` — ottaa kuvan, lataa tiedoston
-- [ ] Luo `app/storage/files.py` — tiedostonhallinta (nimeäminen, polut, `data/captures/`-kansion luonti)
-- [ ] Tiedostonimi: `IMG_YYYYMMDD_HHMMSS.jpg`
-- [ ] Testit: capture mock-pohjaisesti (palauttaa Path-objektin)
+- [x] Toteuta `CameraController.capture()` — ottaa kuvan, lataa tiedoston
+- [x] Luo `app/storage/files.py` — tiedostonhallinta (nimeäminen, polut, `data/captures/`-kansion luonti)
+- [x] Tiedostonimi: `IMG_YYYYMMDD_HHMMSS.jpg`
+- [x] Testit: capture mock-pohjaisesti (palauttaa Path-objektin)
 
 **Hyväksyntä:** Testit menevät läpi. Ihminen voi testata oikealla kameralla: kuva tallentuu `data/captures/`-kansioon.
 
