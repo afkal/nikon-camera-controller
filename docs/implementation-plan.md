@@ -122,10 +122,10 @@ Speksissä on joitain kohtia jotka eivät vastaa FastHTML:n nykyistä API:a:
 **Hyväksyntä:** Capture-nappi ottaa kuvan → kuva näkyy UI:ssa muutamassa sekunnissa. Metadata näkyy kuvan yhteydessä.
 
 ### 3.3 Virhekäsittely
-- [ ] Camera disconnected -tilanne capturen aikana → selkeä virheviesti UI:ssa
-- [ ] Capture timeout → virheviesti
-- [ ] Tiedostojärjestelmävirhe → virheviesti
-- [ ] UI:n error-state: punainen banneri virheen kuvauksen kanssa, häviää seuraavalla onnistuneella toiminnolla
+- [x] Camera disconnected -tilanne capturen aikana → selkeä virheviesti UI:ssa
+- [x] Capture timeout → virheviesti
+- [x] Tiedostojärjestelmävirhe → virheviesti
+- [x] UI:n error-state: punainen banneri virheen kuvauksen kanssa, häviää seuraavalla onnistuneella toiminnolla
 
 **Hyväksyntä:** Ihminen irrottaa kameran → yrittää capturia → näkee ymmärrettävän virheen UI:ssa.
 
