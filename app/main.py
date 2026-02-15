@@ -171,4 +171,5 @@ def get():
     )
 
 
-serve(port=5002)
+if __name__ == "__main__":
+    serve(port=5002)

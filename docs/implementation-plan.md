@@ -46,10 +46,10 @@ Speksissä on joitain kohtia jotka eivät vastaa FastHTML:n nykyistä API:a:
 **Hyväksyntä:** Ihminen avaa selaimen, näkee tyhjän layout-pohjan
 
 ### 1.3 Testausinfra
-- [ ] Luo `tests/conftest.py` — FastHTML TestClient fixture
-- [ ] Luo `tests/test_routes.py` — testi: etusivu palauttaa 200
-- [ ] Varmista: `pytest tests/` ajautuu onnistuneesti
-- [ ] Lisää `Makefile` tai vastaava: `make test`, `make run`, `make lint`
+- [x] Luo `tests/conftest.py` — FastHTML TestClient fixture
+- [x] Luo `tests/test_routes.py` — testi: etusivu palauttaa 200
+- [x] Varmista: `pytest tests/` ajautuu onnistuneesti
+- [x] Lisää `Makefile` tai vastaava: `make test`, `make run`, `make lint`
 
 **Hyväksyntä:** `pytest tests/` näyttää vihreää
 
