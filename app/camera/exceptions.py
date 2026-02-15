@@ -21,5 +21,9 @@ class InvalidSettingError(CameraError):
     """Attempted to set an unsupported or invalid camera setting."""
 
 
+class AutofocusError(CameraError):
+    """Autofocus failed (could not lock focus)."""
+
+
 class CaptureError(CameraError):
     """Failed to capture an image."""

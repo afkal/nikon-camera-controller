@@ -11,6 +11,7 @@ import gphoto2 as gp
 
 from app.camera.capabilities import CameraCapabilities
 from app.camera.exceptions import (
+    AutofocusError,
     CameraAlreadyConnectedError,
     CameraConnectionError,
     CameraNotConnectedError,
@@ -309,6 +310,42 @@ class CameraController:
         except gp.GPhoto2Error as e:
             raise InvalidSettingError(
                 f"Failed to apply settings: {e.string}"
+            ) from e
+
+    def autofocus(self) -> None:
+        """Trigger the camera's autofocus motor.
+
+        Equivalent to a half-press of the shutter button. The camera
+        must be in an AF mode (AF-S, AF-C, AF-A) for this to work.
+        In manual focus mode, the call is silently skipped.
+
+        Raises:
+            CameraNotConnectedError: If no camera is connected.
+            AutofocusError: If AF drive fails (e.g. could not lock).
+        """
+        self._require_connected()
+        assert self._camera is not None
+
+        try:
+            config = self._camera.get_config()
+            af_widget = config.get_child_by_name("autofocusdrive")
+            af_widget.set_value(1)
+            self._camera.set_config(config)
+            logger.info("Autofocus triggered")
+
+            # Brief wait for the AF motor to lock focus.
+            # Nikon cameras typically take 100-500 ms to focus.
+            time.sleep(0.5)
+
+        except gp.GPhoto2Error as e:
+            # autofocusdrive not available → camera may be in MF mode
+            if "not found" in str(e).lower() or e.code == gp.GP_ERROR:
+                logger.debug(
+                    "Autofocus not available (MF mode?): %s", e.string
+                )
+                return  # Silently skip
+            raise AutofocusError(
+                f"Autofocus failed: {e.string}"
             ) from e
 
     def capture(self, captures_dir: Path | None = None) -> Path:

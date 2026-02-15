@@ -13,17 +13,21 @@ from fasthtml.common import *
 from starlette.routing import Mount
 from starlette.staticfiles import StaticFiles
 
+from app.analysis.advisor import get_suggestions
 from app.analysis.histogram import generate_histogram_plot
 from app.analysis.processor import ImageAnalyzer
 from app.camera.controller import CameraController
 from app.camera.exceptions import (
+    AutofocusError,
     CameraAlreadyConnectedError,
     CameraConnectionError,
     CameraNotConnectedError,
     CaptureError,
     InvalidSettingError,
 )
+from app.components.advisor import advisor_display
 from app.components.histogram import histogram_display
+from app.components.history import history_badge, history_panel
 from app.components.metrics import metrics_display
 from app.components.status import (
     camera_status_indicator,
@@ -36,6 +40,7 @@ from app.components.viewer import (
     preview_panel,
 )
 from app.storage.files import get_captures_dir
+from app.storage.session import CaptureRecord, CaptureSession
 
 
 def _get_controls_content(error: str | None = None):
@@ -61,6 +66,7 @@ logger = logging.getLogger(__name__)
 # Global instances
 camera = CameraController()
 analyzer = ImageAnalyzer()
+session = CaptureSession()
 
 app, rt = fast_app(
     static_path=str(Path(__file__).parent / "static"),
@@ -117,14 +123,10 @@ def get():
                 Div(
                     Div(
                         Span("History", cls="section-title"),
-                        Span("0 captures", cls="section-badge"),
+                        history_badge(session.count),
                         cls="section-header",
                     ),
-                    Div(
-                        P("Captures will appear here", cls="empty-state-small"),
-                        id="history-content",
-                        cls="section-body",
-                    ),
+                    history_panel(session.captures),
                     cls="sidebar-section",
                 ),
                 cls="sidebar",
@@ -146,13 +148,18 @@ def get():
                         histogram_display(),
                         cls="card",
                     ),
-                    # Metrics
+                    # Metrics + Advisor
                     Section(
                         Div(
                             Span("Exposure Metrics", cls="section-title"),
                             cls="section-header",
                         ),
                         metrics_display(),
+                        Div(
+                            Span("Advisor", cls="section-title"),
+                            cls="section-header advisor-header",
+                        ),
+                        advisor_display(),
                         cls="card",
                     ),
                     cls="analysis-row",
@@ -250,9 +257,10 @@ def post(
 def post():
     """Capture an image, analyze it, and return all UI fragments.
 
+    Sequence: autofocus → capture → analyze → suggest → store.
     Returns the preview panel (primary target) plus OOB-swapped
-    histogram and metrics panels. On error, also syncs controls
-    and status indicator.
+    histogram, metrics, advisor, and history panels. On error,
+    also syncs controls and status indicator.
     """
     try:
         # Read settings before capture for metadata display
@@ -262,6 +270,12 @@ def post():
                 settings = camera.get_settings()
             except Exception:
                 pass
+
+        # Autofocus before capture (non-fatal — MF mode skips silently)
+        try:
+            camera.autofocus()
+        except AutofocusError:
+            logger.warning("Autofocus failed, capturing anyway")
 
         # Capture image
         image_path = camera.capture()
@@ -276,8 +290,21 @@ def post():
         # Analyze the captured image
         hist_oob = histogram_display(hx_swap_oob=True)
         metrics_oob = metrics_display(hx_swap_oob=True)
+        advisor_oob = advisor_display(hx_swap_oob=True)
+
+        analysis_brightness = None
+        analysis_overexposed = None
+        analysis_underexposed = None
+        analysis_dynamic_range = None
+        hist_png_name = None
+
         try:
             analysis = analyzer.analyze(image_path)
+
+            analysis_brightness = analysis.average_brightness
+            analysis_overexposed = analysis.overexposed_percent
+            analysis_underexposed = analysis.underexposed_percent
+            analysis_dynamic_range = analysis.dynamic_range
 
             # Generate histogram PNG next to image
             hist_png = image_path.with_name(
@@ -292,6 +319,7 @@ def post():
                 },
                 hist_png,
             )
+            hist_png_name = hist_png.name
 
             hist_oob = histogram_display(
                 histogram_image=f"/captures/{hist_png.name}",
@@ -304,8 +332,39 @@ def post():
                 dynamic_range=analysis.dynamic_range,
                 hx_swap_oob=True,
             )
+
+            # Generate exposure suggestions
+            current_iso = settings.iso if settings else ""
+            current_shutter = settings.shutter_speed if settings else ""
+            suggestions = get_suggestions(
+                average_brightness=analysis.average_brightness,
+                overexposed_percent=analysis.overexposed_percent,
+                underexposed_percent=analysis.underexposed_percent,
+                current_iso=current_iso,
+                current_shutter=current_shutter,
+            )
+            advisor_oob = advisor_display(
+                suggestions=suggestions,
+                hx_swap_oob=True,
+            )
         except Exception:
             logger.exception("Image analysis failed (non-fatal)")
+
+        # Store capture in session
+        record = CaptureRecord(
+            capture_id=0,  # assigned by session.add()
+            filename=image_path.name,
+            image_path=image_path,
+            captured_at=captured_at,
+            settings_summary=settings_summary,
+            file_size=file_size,
+            average_brightness=analysis_brightness,
+            overexposed_percent=analysis_overexposed,
+            underexposed_percent=analysis_underexposed,
+            dynamic_range=analysis_dynamic_range,
+            histogram_png=hist_png_name,
+        )
+        session.add(record)
 
         return (
             preview_panel(
@@ -317,6 +376,9 @@ def post():
             ),
             hist_oob,
             metrics_oob,
+            advisor_oob,
+            history_panel(session.captures, hx_swap_oob=True),
+            history_badge(session.count, hx_swap_oob=True),
         )
 
     except CameraNotConnectedError:

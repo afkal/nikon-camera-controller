@@ -244,7 +244,10 @@ def test_capture_success_returns_image(client, tmp_path):
     fake_image = tmp_path / "IMG_20260215_120000.jpg"
     fake_image.write_bytes(b"\xff\xd8" + b"\x00" * 1000)
 
-    with patch("app.main.camera") as mock_camera:
+    with (
+        patch("app.main.camera") as mock_camera,
+        patch("app.main.analyzer") as mock_analyzer,
+    ):
         mock_camera.connected = True
         mock_camera.capture.return_value = fake_image
         mock_camera.get_settings.return_value = MagicMock(
@@ -254,6 +257,18 @@ def test_capture_success_returns_image(client, tmp_path):
             exposure_compensation="0",
         )
         mock_camera.get_status.return_value = _CONNECTED_STATUS
+        # Mock analysis to avoid PIL error on fake image bytes
+        mock_analysis = MagicMock(
+            average_brightness=128.0,
+            overexposed_percent=1.0,
+            underexposed_percent=1.0,
+            dynamic_range=10.5,
+            histogram_red=[0] * 256,
+            histogram_green=[0] * 256,
+            histogram_blue=[0] * 256,
+            histogram_luminance=[0] * 256,
+        )
+        mock_analyzer.analyze.return_value = mock_analysis
         response = client.post("/api/capture")
         assert response.status_code == 200
         assert "IMG_20260215_120000.jpg" in response.text
@@ -277,8 +292,13 @@ def test_capture_error_clears_on_next_success(client, tmp_path):
         response = client.post("/api/capture")
         assert "error-banner" in response.text
 
-        # Second: success
-        mock_camera.capture.side_effect = None
+    # Second: success (fresh patch context)
+    with (
+        patch("app.main.camera") as mock_camera,
+        patch("app.main.analyzer") as mock_analyzer,
+    ):
+        mock_camera.connected = True
+        mock_camera.get_status.return_value = _CONNECTED_STATUS
         mock_camera.capture.return_value = fake_image
         mock_camera.get_settings.return_value = MagicMock(
             iso="400",
@@ -286,6 +306,17 @@ def test_capture_error_clears_on_next_success(client, tmp_path):
             aperture="f/5.6",
             exposure_compensation="0",
         )
+        mock_analysis = MagicMock(
+            average_brightness=128.0,
+            overexposed_percent=1.0,
+            underexposed_percent=1.0,
+            dynamic_range=10.5,
+            histogram_red=[0] * 256,
+            histogram_green=[0] * 256,
+            histogram_blue=[0] * 256,
+            histogram_luminance=[0] * 256,
+        )
+        mock_analyzer.analyze.return_value = mock_analysis
         response = client.post("/api/capture")
         assert "error-banner" not in response.text
         assert "IMG_20260215_120001.jpg" in response.text
