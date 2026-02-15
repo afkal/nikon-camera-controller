@@ -134,30 +134,30 @@ Speksissä on joitain kohtia jotka eivät vastaa FastHTML:n nykyistä API:a:
 ## Phase 4: Image Analysis
 
 ### 4.1 Histogrammi ja metriikat
-- [ ] Luo `app/analysis/processor.py` — `ImageAnalyzer`-luokka
-- [ ] Toteuta `analyze()` — kokonainen analyysi yhdellä kutsulla
-- [ ] Toteuta `calculate_histogram()` — RGB + luminanssi, 256 biniä
-- [ ] Toteuta `calculate_metrics()` — keskikirkkaus, yli/alivalottuneet %, dynaaminen alue
-- [ ] Toteuta `read_exif()` — EXIF-datan luku Pillowlla
-- [ ] Luo `ImageAnalysis` dataclass
-- [ ] Testit: analysoi testikuva, tarkista metriikat (käytä tunnettua testikuvaa)
+- [x] Luo `app/analysis/processor.py` — `ImageAnalyzer`-luokka
+- [x] Toteuta `analyze()` — kokonainen analyysi yhdellä kutsulla
+- [x] Toteuta `calculate_histogram()` — RGB + luminanssi, 256 biniä
+- [x] Toteuta `calculate_metrics()` — keskikirkkaus, yli/alivalottuneet %, dynaaminen alue
+- [x] Toteuta `read_exif()` — EXIF-datan luku Pillowlla
+- [x] Luo `ImageAnalysis` dataclass
+- [x] Testit: analysoi testikuva, tarkista metriikat (käytä tunnettua testikuvaa)
 
 **Hyväksyntä:** Testit menevät läpi. Analysoi tunnetun kuvan → metriikat vastaavat odotettuja.
 
 ### 4.2 Histogrammi-visualisointi
-- [ ] Luo `app/analysis/histogram.py` — `generate_histogram_plot()`
-- [ ] Matplotlib-histogrammi: RGB-kanavat + luminanssi, läpinäkyvä tausta
-- [ ] Tallenna PNG-tiedostona `data/captures/`-kansioon kuvan viereen
-- [ ] Luo reitti `GET /histogram/{capture_filename}.png`
+- [x] Luo `app/analysis/histogram.py` — `generate_histogram_plot()`
+- [x] Matplotlib-histogrammi: RGB-kanavat + luminanssi, läpinäkyvä tausta
+- [x] Tallenna PNG-tiedostona `data/captures/`-kansioon kuvan viereen
+- [x] Tarjoillaan Starlette StaticFiles mountin kautta `/captures/`
 
 **Hyväksyntä:** Histogrammi-PNG generoituu ja näyttää oikealta.
 
 ### 4.3 Analyysi-UI-komponentit
-- [ ] Luo `app/components/histogram.py` — `HistogramDisplay()`-funktio
-- [ ] Luo `app/components/metrics.py` — `MetricsPanel()`-funktio
-- [ ] Varoitukset: punaisella jos ylivalottuneita > 5%, alivalottuneita > 5%
-- [ ] Integroi capture-reittiin: kuvan oton jälkeen palautetaan myös histogrammi + metriikat
-- [ ] Päivitä `POST /api/capture` — palauttaa koko preview-panelin (kuva + histogrammi + metriikat)
+- [x] Luo `app/components/histogram.py` — `HistogramDisplay()`-funktio
+- [x] Luo `app/components/metrics.py` — `MetricsPanel()`-funktio
+- [x] Varoitukset: punaisella jos ylivalottuneita > 5%, alivalottuneita > 5%
+- [x] Integroi capture-reittiin: kuvan oton jälkeen palautetaan myös histogrammi + metriikat
+- [x] Päivitä `POST /api/capture` — palauttaa koko preview-panelin (kuva + histogrammi + metriikat)
 
 **Hyväksyntä:** Capture-nappi → kuva + histogrammi + metriikat näkyvät kaikki yhdellä painalluksella. Varoitukset näkyvät oikein.
 
