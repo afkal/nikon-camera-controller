@@ -87,15 +87,15 @@ Speksissä on joitain kohtia jotka eivät vastaa FastHTML:n nykyistä API:a:
 **Hyväksyntä:** Testit menevät läpi. Ihminen voi testata oikealla kameralla: lue asetukset → muuta ISO → lue uudelleen → arvo muuttunut.
 
 ### 2.4 Camera Controls -UI-komponentti
-- [ ] Luo `app/components/controls.py` — `CameraControls()`-funktio
-- [ ] ISO-selector (Select-elementti, arvot capabilities-kyselystä)
-- [ ] Shutter speed -selector
-- [ ] Aperture-selector
-- [ ] Exposure compensation -slider
-- [ ] White balance -selector
-- [ ] Jokainen kontrolli lähettää `hx_post="/api/camera/settings"` muutoksella
-- [ ] Luo reitti `POST /api/camera/settings` — vastaanottaa yksittäisen asetuksen muutoksen
-- [ ] Luo reitti `GET /api/camera/settings` — palauttaa nykyiset asetukset fragmenttina
+- [x] Luo `app/components/controls.py` — `CameraControls()`-funktio
+- [x] ISO-selector (Select-elementti, arvot capabilities-kyselystä)
+- [x] Shutter speed -selector
+- [x] Aperture-selector
+- [x] Exposure compensation -slider
+- [x] White balance -selector
+- [x] Jokainen kontrolli lähettää `hx_post="/api/camera/settings"` muutoksella
+- [x] Luo reitti `POST /api/camera/settings` — vastaanottaa yksittäisen asetuksen muutoksen
+- [x] Luo reitti `GET /api/camera/settings` — palauttaa nykyiset asetukset fragmenttina
 
 **Hyväksyntä:** UI näyttää kameran nykyiset asetukset select-elementeissä. Arvon vaihto päivittää kameran asetuksen ja UI päivittyy.
 
