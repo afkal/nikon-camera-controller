@@ -13,6 +13,8 @@ from fasthtml.common import *
 from starlette.routing import Mount
 from starlette.staticfiles import StaticFiles
 
+from app.analysis.histogram import generate_histogram_plot
+from app.analysis.processor import ImageAnalyzer
 from app.camera.controller import CameraController
 from app.camera.exceptions import (
     CameraAlreadyConnectedError,
@@ -21,6 +23,8 @@ from app.camera.exceptions import (
     CaptureError,
     InvalidSettingError,
 )
+from app.components.histogram import histogram_display
+from app.components.metrics import metrics_display
 from app.components.status import (
     camera_status_indicator,
     controls_content,
@@ -54,8 +58,9 @@ def _get_controls_content(error: str | None = None):
 
 logger = logging.getLogger(__name__)
 
-# Global camera controller instance
+# Global instances
 camera = CameraController()
+analyzer = ImageAnalyzer()
 
 app, rt = fast_app(
     static_path=str(Path(__file__).parent / "static"),
@@ -138,15 +143,7 @@ def get():
                             Span("Histogram", cls="section-title"),
                             cls="section-header",
                         ),
-                        Div(
-                            Div(
-                                Div(cls="histogram-bars-placeholder"),
-                                P("RGB + Luminance", cls="placeholder-label"),
-                                cls="analysis-empty",
-                            ),
-                            id="histogram-display",
-                            cls="analysis-area",
-                        ),
+                        histogram_display(),
                         cls="card",
                     ),
                     # Metrics
@@ -155,35 +152,7 @@ def get():
                             Span("Exposure Metrics", cls="section-title"),
                             cls="section-header",
                         ),
-                        Div(
-                            Div(
-                                Div(
-                                    Div(
-                                        Span("--", cls="metric-value"),
-                                        Span("Brightness", cls="metric-label"),
-                                        cls="metric-item",
-                                    ),
-                                    Div(
-                                        Span("--", cls="metric-value"),
-                                        Span("Overexposed", cls="metric-label"),
-                                        cls="metric-item",
-                                    ),
-                                    Div(
-                                        Span("--", cls="metric-value"),
-                                        Span("Underexposed", cls="metric-label"),
-                                        cls="metric-item",
-                                    ),
-                                    Div(
-                                        Span("--", cls="metric-value"),
-                                        Span("Dynamic Range", cls="metric-label"),
-                                        cls="metric-item",
-                                    ),
-                                    cls="metrics-grid",
-                                ),
-                                cls="metrics-content",
-                            ),
-                            id="metrics-display",
-                        ),
+                        metrics_display(),
                         cls="card",
                     ),
                     cls="analysis-row",
@@ -279,11 +248,11 @@ def post(
 
 @rt("/api/capture")
 def post():
-    """Capture an image and return updated preview panel.
+    """Capture an image, analyze it, and return all UI fragments.
 
-    On error, returns OOB fragments to sync the controls sidebar
-    and status indicator so the UI reflects the true camera state
-    (e.g. disconnected after a USB unplug during capture).
+    Returns the preview panel (primary target) plus OOB-swapped
+    histogram and metrics panels. On error, also syncs controls
+    and status indicator.
     """
     try:
         # Read settings before capture for metadata display
@@ -304,12 +273,50 @@ def post():
         captured_at = format_capture_time(image_path)
         file_size = format_file_size(image_path.stat().st_size)
 
-        return preview_panel(
-            connected=True,
-            filename=image_path.name,
-            settings_summary=settings_summary,
-            captured_at=captured_at,
-            file_size=file_size,
+        # Analyze the captured image
+        hist_oob = histogram_display(hx_swap_oob=True)
+        metrics_oob = metrics_display(hx_swap_oob=True)
+        try:
+            analysis = analyzer.analyze(image_path)
+
+            # Generate histogram PNG next to image
+            hist_png = image_path.with_name(
+                image_path.stem + "_hist.png"
+            )
+            generate_histogram_plot(
+                {
+                    "red": analysis.histogram_red,
+                    "green": analysis.histogram_green,
+                    "blue": analysis.histogram_blue,
+                    "luminance": analysis.histogram_luminance,
+                },
+                hist_png,
+            )
+
+            hist_oob = histogram_display(
+                histogram_image=f"/captures/{hist_png.name}",
+                hx_swap_oob=True,
+            )
+            metrics_oob = metrics_display(
+                average_brightness=analysis.average_brightness,
+                overexposed_percent=analysis.overexposed_percent,
+                underexposed_percent=analysis.underexposed_percent,
+                dynamic_range=analysis.dynamic_range,
+                hx_swap_oob=True,
+            )
+        except Exception:
+            logger.exception("Image analysis failed (non-fatal)")
+
+        return (
+            preview_panel(
+                connected=True,
+                filename=image_path.name,
+                settings_summary=settings_summary,
+                captured_at=captured_at,
+                file_size=file_size,
+            ),
+            hist_oob,
+            metrics_oob,
         )
 
     except CameraNotConnectedError:

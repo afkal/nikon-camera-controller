@@ -441,6 +441,12 @@ body {
     padding: var(--space-md);
 }
 
+.histogram-image {
+    width: 100%;
+    height: auto;
+    display: block;
+}
+
 .analysis-empty {
     display: flex;
     flex-direction: column;
@@ -558,8 +564,22 @@ body {
     font-size: 1.15rem;
     font-weight: 700;
     font-family: var(--font-mono);
-    color: var(--text-tertiary);
+    color: var(--text-secondary);
     letter-spacing: -0.02em;
+}
+
+/* Clipping warning: red border + red text for over/underexposed > 5% */
+.metric-warning {
+    border-color: rgba(217, 83, 79, 0.4);
+    background: var(--color-danger-subtle);
+}
+
+.metric-warning .metric-value {
+    color: var(--color-danger);
+}
+
+.metric-warning .metric-label {
+    color: var(--color-danger);
 }
 
 .metric-label {
