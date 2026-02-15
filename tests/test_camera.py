@@ -9,6 +9,7 @@ from app.camera.exceptions import (
     CameraAlreadyConnectedError,
     CameraConnectionError,
     CameraNotConnectedError,
+    CaptureError,
     InvalidSettingError,
 )
 
@@ -437,3 +438,95 @@ class TestSetSettings:
         connected_controller.set_settings()
 
         mock_camera.get_config.assert_not_called()
+
+
+# --- Capture tests ---
+
+
+class TestCapture:
+    def test_raises_when_not_connected(
+        self, controller: CameraController
+    ) -> None:
+        with pytest.raises(CameraNotConnectedError):
+            controller.capture()
+
+    def test_capture_success(
+        self, connected_controller: CameraController, tmp_path
+    ) -> None:
+        mock_camera = connected_controller._camera
+        assert mock_camera is not None
+
+        # Mock capture result (CameraFilePath)
+        mock_file_path = MagicMock()
+        mock_file_path.folder = "/store_00010001/DCIM/100NCD75"
+        mock_file_path.name = "DSC_0042.JPG"
+        mock_camera.capture.return_value = mock_file_path
+
+        # Mock file download
+        mock_camera_file = MagicMock()
+        mock_camera.file_get.return_value = mock_camera_file
+
+        result = connected_controller.capture(captures_dir=tmp_path)
+
+        # Should have triggered capture
+        import gphoto2 as gp
+
+        mock_camera.capture.assert_called_once_with(gp.GP_CAPTURE_IMAGE)
+
+        # Should have downloaded file
+        mock_camera.file_get.assert_called_once_with(
+            "/store_00010001/DCIM/100NCD75",
+            "DSC_0042.JPG",
+            gp.GP_FILE_TYPE_NORMAL,
+        )
+
+        # Should have saved file
+        mock_camera_file.save.assert_called_once()
+        assert result.parent == tmp_path
+        assert result.suffix == ".jpg"
+        assert result.name.startswith("IMG_")
+
+    def test_capture_preserves_nef_extension(
+        self, connected_controller: CameraController, tmp_path
+    ) -> None:
+        mock_camera = connected_controller._camera
+        assert mock_camera is not None
+
+        mock_file_path = MagicMock()
+        mock_file_path.folder = "/store_00010001/DCIM/100NCD75"
+        mock_file_path.name = "DSC_0042.NEF"
+        mock_camera.capture.return_value = mock_file_path
+        mock_camera.file_get.return_value = MagicMock()
+
+        result = connected_controller.capture(captures_dir=tmp_path)
+
+        assert result.suffix == ".nef"
+
+    def test_capture_gphoto_error_raises_capture_error(
+        self, connected_controller: CameraController, tmp_path
+    ) -> None:
+        import gphoto2 as gp
+
+        mock_camera = connected_controller._camera
+        assert mock_camera is not None
+        mock_camera.capture.side_effect = gp.GPhoto2Error(gp.GP_ERROR)
+
+        with pytest.raises(CaptureError, match="Failed to capture"):
+            connected_controller.capture(captures_dir=tmp_path)
+
+    def test_capture_download_error_raises_capture_error(
+        self, connected_controller: CameraController, tmp_path
+    ) -> None:
+        import gphoto2 as gp
+
+        mock_camera = connected_controller._camera
+        assert mock_camera is not None
+
+        mock_file_path = MagicMock()
+        mock_file_path.folder = "/store"
+        mock_file_path.name = "DSC_0001.JPG"
+        mock_camera.capture.return_value = mock_file_path
+        mock_camera.file_get.side_effect = gp.GPhoto2Error(gp.GP_ERROR)
+
+        with pytest.raises(CaptureError, match="Failed to capture"):
+            connected_controller.capture(captures_dir=tmp_path)

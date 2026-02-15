@@ -4,6 +4,7 @@ import logging
 import platform
 import subprocess
 import time
+from pathlib import Path
 from typing import Any
 
 import gphoto2 as gp
@@ -13,9 +14,11 @@ from app.camera.exceptions import (
     CameraAlreadyConnectedError,
     CameraConnectionError,
     CameraNotConnectedError,
+    CaptureError,
     InvalidSettingError,
 )
 from app.camera.settings import CameraSettings
+from app.storage.files import get_capture_path
 
 logger = logging.getLogger(__name__)
 
@@ -306,6 +309,61 @@ class CameraController:
         except gp.GPhoto2Error as e:
             raise InvalidSettingError(
                 f"Failed to apply settings: {e.string}"
+            ) from e
+
+    def capture(self, captures_dir: Path | None = None) -> Path:
+        """Capture an image and download it to local storage.
+
+        Triggers the camera shutter, waits for the image to be ready,
+        downloads it from the camera, and saves it with a timestamped
+        filename in the captures directory.
+
+        Args:
+            captures_dir: Override for the captures directory.
+                          Defaults to ``data/captures/``.
+
+        Returns:
+            Path to the saved image file.
+
+        Raises:
+            CameraNotConnectedError: If no camera is connected.
+            CaptureError: If capture or download fails.
+        """
+        self._require_connected()
+        assert self._camera is not None
+
+        try:
+            # Trigger capture — returns (CameraFilePath) on camera storage
+            file_path = self._camera.capture(gp.GP_CAPTURE_IMAGE)
+            logger.info(
+                "Captured: %s/%s",
+                file_path.folder,
+                file_path.name,
+            )
+
+            # Determine local save path
+            # Use camera file extension (usually .JPG or .NEF)
+            extension = Path(file_path.name).suffix or ".jpg"
+            save_path = get_capture_path(
+                captures_dir=captures_dir,
+            )
+            # Replace extension if camera gives a different one
+            save_path = save_path.with_suffix(extension.lower())
+
+            # Download file from camera to local storage
+            camera_file = self._camera.file_get(
+                file_path.folder,
+                file_path.name,
+                gp.GP_FILE_TYPE_NORMAL,
+            )
+            camera_file.save(str(save_path))
+            logger.info("Saved capture to: %s", save_path)
+
+            return save_path
+
+        except gp.GPhoto2Error as e:
+            raise CaptureError(
+                f"Failed to capture image: {e.string}"
             ) from e
 
     def _require_connected(self) -> None:
