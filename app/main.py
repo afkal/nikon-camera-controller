@@ -10,17 +10,28 @@ if _project_root not in sys.path:
     sys.path.insert(0, _project_root)
 
 from fasthtml.common import *
+from starlette.routing import Mount
+from starlette.staticfiles import StaticFiles
 
 from app.camera.controller import CameraController
 from app.camera.exceptions import (
     CameraAlreadyConnectedError,
     CameraConnectionError,
+    CameraNotConnectedError,
+    CaptureError,
     InvalidSettingError,
 )
 from app.components.status import (
     camera_status_indicator,
     controls_content,
 )
+from app.components.viewer import (
+    format_capture_time,
+    format_file_size,
+    format_settings_summary,
+    preview_panel,
+)
+from app.storage.files import get_captures_dir
 
 
 def _get_controls_content(error: str | None = None):
@@ -116,26 +127,8 @@ def get():
             # Main content area
             Div(
                 # Image viewer
-                Section(
-                    Div(
-                        Span("Preview", cls="section-title"),
-                        cls="section-header",
-                    ),
-                    Div(
-                        Div(
-                            Div(cls="viewer-icon"),
-                            P("No image captured"),
-                            P(
-                                "Take a photo to see the preview here",
-                                cls="viewer-hint",
-                            ),
-                            cls="viewer-empty",
-                        ),
-                        id="image-viewer",
-                        cls="viewer-area",
-                    ),
-                    id="preview-panel",
-                    cls="card",
+                preview_panel(
+                    connected=status.get("connected", False),
                 ),
                 # Analysis row
                 Div(
@@ -215,21 +208,34 @@ def get():
 
 @rt("/api/camera/connect")
 def post():
-    """Connect to the camera. Returns updated controls content."""
+    """Connect to the camera. Returns controls + preview panel (OOB)."""
     try:
         camera.connect()
-        return _get_controls_content()
+        connected = camera.connected
+        return (
+            _get_controls_content(),
+            preview_panel(connected=connected, hx_swap_oob=True),
+        )
     except CameraAlreadyConnectedError:
-        return _get_controls_content()
+        return (
+            _get_controls_content(),
+            preview_panel(connected=True, hx_swap_oob=True),
+        )
     except CameraConnectionError as e:
-        return _get_controls_content(error=str(e))
+        return (
+            _get_controls_content(error=str(e)),
+            preview_panel(connected=False, hx_swap_oob=True),
+        )
 
 
 @rt("/api/camera/disconnect")
 def post():
-    """Disconnect from the camera. Returns updated controls content."""
+    """Disconnect from the camera. Returns controls + preview panel (OOB)."""
     camera.disconnect()
-    return _get_controls_content()
+    return (
+        _get_controls_content(),
+        preview_panel(connected=False, hx_swap_oob=True),
+    )
 
 
 @rt("/api/camera/settings")
@@ -266,6 +272,72 @@ def post(
             return _get_controls_content(error=str(e))
 
     return _get_controls_content()
+
+
+# --- Capture API routes ---
+
+
+@rt("/api/capture")
+def post():
+    """Capture an image and return updated preview panel."""
+    try:
+        # Read settings before capture for metadata display
+        settings = None
+        if camera.connected:
+            try:
+                settings = camera.get_settings()
+            except Exception:
+                pass
+
+        # Capture image
+        image_path = camera.capture()
+
+        # Build metadata
+        settings_summary = (
+            format_settings_summary(settings) if settings else ""
+        )
+        captured_at = format_capture_time(image_path)
+        file_size = format_file_size(image_path.stat().st_size)
+
+        return preview_panel(
+            connected=True,
+            filename=image_path.name,
+            settings_summary=settings_summary,
+            captured_at=captured_at,
+            file_size=file_size,
+        )
+
+    except CameraNotConnectedError:
+        return preview_panel(
+            connected=False,
+            error="Camera not connected",
+        )
+    except CaptureError as e:
+        return preview_panel(
+            connected=camera.connected,
+            error=str(e),
+        )
+    except Exception as e:
+        logger.exception("Unexpected capture error")
+        return preview_panel(
+            connected=camera.connected,
+            error=f"Capture failed: {e}",
+        )
+
+
+# --- Static file mounts ---
+# Serve captured images at /captures/. Uses Starlette Mount instead of
+# a FastHTML route because FastHTML's built-in /{fname:path}.{ext:static}
+# intercepts any URL ending in .jpg/.png/etc before custom routes.
+_captures_dir = get_captures_dir()
+app.routes.insert(
+    0,
+    Mount(
+        "/captures",
+        app=StaticFiles(directory=str(_captures_dir)),
+        name="captures",
+    ),
+)
 
 
 if __name__ == "__main__":

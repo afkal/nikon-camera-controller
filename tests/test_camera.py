@@ -450,9 +450,12 @@ class TestCapture:
         with pytest.raises(CameraNotConnectedError):
             controller.capture()
 
-    def test_capture_success(
+    def test_capture_jpeg_only(
         self, connected_controller: CameraController, tmp_path
     ) -> None:
+        """Camera returns JPG — no extra files pending."""
+        import gphoto2 as gp
+
         mock_camera = connected_controller._camera
         assert mock_camera is not None
 
@@ -466,29 +469,65 @@ class TestCapture:
         mock_camera_file = MagicMock()
         mock_camera.file_get.return_value = mock_camera_file
 
+        # No extra events (JPEG-only mode)
+        mock_camera.wait_for_event.return_value = (
+            gp.GP_EVENT_TIMEOUT,
+            None,
+        )
+
         result = connected_controller.capture(captures_dir=tmp_path)
 
-        # Should have triggered capture
-        import gphoto2 as gp
-
         mock_camera.capture.assert_called_once_with(gp.GP_CAPTURE_IMAGE)
-
-        # Should have downloaded file
         mock_camera.file_get.assert_called_once_with(
             "/store_00010001/DCIM/100NCD75",
             "DSC_0042.JPG",
             gp.GP_FILE_TYPE_NORMAL,
         )
-
-        # Should have saved file
         mock_camera_file.save.assert_called_once()
         assert result.parent == tmp_path
         assert result.suffix == ".jpg"
         assert result.name.startswith("IMG_")
 
-    def test_capture_preserves_nef_extension(
+    def test_capture_nef_plus_jpeg(
         self, connected_controller: CameraController, tmp_path
     ) -> None:
+        """Camera in NEF+JPEG mode — returns NEF first, then JPG event."""
+        import gphoto2 as gp
+
+        mock_camera = connected_controller._camera
+        assert mock_camera is not None
+
+        # First file: NEF
+        mock_nef_path = MagicMock()
+        mock_nef_path.folder = "/store_00010001/DCIM/100NCD75"
+        mock_nef_path.name = "DSC_0042.NEF"
+        mock_camera.capture.return_value = mock_nef_path
+
+        # Second file arrives as FILE_ADDED event: JPG
+        mock_jpg_event = MagicMock()
+        mock_jpg_event.folder = "/store_00010001/DCIM/100NCD75"
+        mock_jpg_event.name = "DSC_0042.JPG"
+
+        mock_camera.wait_for_event.side_effect = [
+            (gp.GP_EVENT_FILE_ADDED, mock_jpg_event),
+            (gp.GP_EVENT_TIMEOUT, None),
+        ]
+        mock_camera.file_get.return_value = MagicMock()
+
+        result = connected_controller.capture(captures_dir=tmp_path)
+
+        # Should return the JPEG path (browser-viewable)
+        assert result.suffix == ".jpg"
+        assert result.parent == tmp_path
+        # file_get called twice: once for NEF, once for JPG
+        assert mock_camera.file_get.call_count == 2
+
+    def test_capture_nef_only_returns_nef(
+        self, connected_controller: CameraController, tmp_path
+    ) -> None:
+        """Camera in RAW-only mode — no JPEG event follows."""
+        import gphoto2 as gp
+
         mock_camera = connected_controller._camera
         assert mock_camera is not None
 
@@ -498,8 +537,15 @@ class TestCapture:
         mock_camera.capture.return_value = mock_file_path
         mock_camera.file_get.return_value = MagicMock()
 
+        # No extra files
+        mock_camera.wait_for_event.return_value = (
+            gp.GP_EVENT_TIMEOUT,
+            None,
+        )
+
         result = connected_controller.capture(captures_dir=tmp_path)
 
+        # No JPEG available, returns NEF
         assert result.suffix == ".nef"
 
     def test_capture_gphoto_error_raises_capture_error(

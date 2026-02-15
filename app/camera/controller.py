@@ -318,12 +318,17 @@ class CameraController:
         downloads it from the camera, and saves it with a timestamped
         filename in the captures directory.
 
+        When the camera is set to NEF+JPEG mode, both files are
+        downloaded. The JPEG path is returned (for browser display)
+        and the NEF is saved alongside it.
+
         Args:
             captures_dir: Override for the captures directory.
                           Defaults to ``data/captures/``.
 
         Returns:
-            Path to the saved image file.
+            Path to the saved JPEG file (or NEF if JPEG-only is not
+            available).
 
         Raises:
             CameraNotConnectedError: If no camera is connected.
@@ -341,30 +346,93 @@ class CameraController:
                 file_path.name,
             )
 
-            # Determine local save path
-            # Use camera file extension (usually .JPG or .NEF)
-            extension = Path(file_path.name).suffix or ".jpg"
-            save_path = get_capture_path(
-                captures_dir=captures_dir,
-            )
-            # Replace extension if camera gives a different one
-            save_path = save_path.with_suffix(extension.lower())
+            # Generate base filename for this capture
+            base_path = get_capture_path(captures_dir=captures_dir)
+            base_stem = base_path.stem  # IMG_YYYYMMDD_HHMMSS
 
-            # Download file from camera to local storage
+            # Download the first file (usually NEF in NEF+JPG mode)
+            first_ext = Path(file_path.name).suffix or ".jpg"
+            first_save = base_path.with_suffix(first_ext.lower())
             camera_file = self._camera.file_get(
                 file_path.folder,
                 file_path.name,
                 gp.GP_FILE_TYPE_NORMAL,
             )
-            camera_file.save(str(save_path))
-            logger.info("Saved capture to: %s", save_path)
+            camera_file.save(str(first_save))
+            logger.info("Saved: %s", first_save)
 
-            return save_path
+            # In NEF+JPEG mode the camera produces a second file.
+            # Poll for it with wait_for_event.
+            jpeg_path = self._download_pending_files(
+                base_stem=base_stem,
+                captures_dir=first_save.parent,
+            )
+
+            # Return JPEG if we got one, otherwise the first file
+            if jpeg_path:
+                return jpeg_path
+            return first_save
 
         except gp.GPhoto2Error as e:
             raise CaptureError(
                 f"Failed to capture image: {e.string}"
             ) from e
+
+    def _download_pending_files(
+        self,
+        base_stem: str,
+        captures_dir: Path,
+        timeout_ms: int = 3000,
+    ) -> Path | None:
+        """Download any additional files the camera queued after capture.
+
+        NEF+JPEG mode produces two files; the second arrives as a
+        FILE_ADDED event shortly after the first.
+
+        Returns:
+            Path to the JPEG file if found, else None.
+        """
+        assert self._camera is not None
+
+        jpeg_path: Path | None = None
+        deadline = time.monotonic() + timeout_ms / 1000
+
+        while time.monotonic() < deadline:
+            try:
+                event_type, event_data = self._camera.wait_for_event(
+                    500  # poll interval in ms
+                )
+            except gp.GPhoto2Error:
+                break
+
+            if event_type == gp.GP_EVENT_FILE_ADDED:
+                cam_path = event_data
+                ext = Path(cam_path.name).suffix.lower()
+                save_path = captures_dir / f"{base_stem}{ext}"
+
+                try:
+                    cam_file = self._camera.file_get(
+                        cam_path.folder,
+                        cam_path.name,
+                        gp.GP_FILE_TYPE_NORMAL,
+                    )
+                    cam_file.save(str(save_path))
+                    logger.info("Saved additional: %s", save_path)
+
+                    if ext in (".jpg", ".jpeg"):
+                        jpeg_path = save_path
+                except gp.GPhoto2Error as e:
+                    logger.warning(
+                        "Failed to download %s: %s",
+                        cam_path.name,
+                        e.string,
+                    )
+
+            elif event_type == gp.GP_EVENT_TIMEOUT:
+                # No more events pending
+                break
+
+        return jpeg_path
 
     def _require_connected(self) -> None:
         """Raise if camera is not connected."""

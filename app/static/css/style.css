@@ -774,6 +774,116 @@ body {
     line-height: 1.4;
 }
 
+/* --- Capture Button --- */
+.btn-capture {
+    background: var(--brand-primary);
+    color: var(--text-inverse);
+    border-color: var(--brand-primary);
+    width: auto;
+    padding: 5px 16px;
+    font-size: 0.78rem;
+    display: inline-flex;
+    align-items: center;
+    gap: var(--space-xs);
+}
+
+.btn-capture:hover {
+    background: var(--brand-primary-hover);
+    border-color: var(--brand-primary-hover);
+    transform: translateY(-1px);
+    box-shadow: 0 2px 8px rgba(200, 164, 85, 0.3);
+}
+
+.btn-capture:active {
+    transform: translateY(0);
+}
+
+.btn-capture.btn-disabled {
+    opacity: 0.35;
+    cursor: not-allowed;
+    pointer-events: none;
+}
+
+.btn-capture.htmx-request {
+    opacity: 0.6;
+    pointer-events: none;
+}
+
+/* --- Preview Header --- */
+.preview-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+}
+
+#capture-btn-area {
+    display: inline-flex;
+}
+
+/* --- Image Viewer — Photo Mode --- */
+.viewer-image-container {
+    padding: var(--space-sm);
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    background: var(--surface-base);
+    border-radius: var(--radius-sm);
+    margin: var(--space-md);
+    min-height: 300px;
+}
+
+.viewer-image {
+    max-width: 100%;
+    max-height: calc(100vh - 340px);
+    height: auto;
+    border-radius: var(--radius-xs);
+    object-fit: contain;
+    box-shadow: var(--shadow-md);
+}
+
+/* --- Image Metadata Bar --- */
+.viewer-meta {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: var(--space-sm) var(--space-lg);
+    border-top: 1px solid var(--border-subtle);
+    background: var(--surface-2);
+}
+
+.meta-filename {
+    font-family: var(--font-mono);
+    font-size: 0.72rem;
+    font-weight: 600;
+    color: var(--text-secondary);
+}
+
+.meta-details {
+    display: flex;
+    align-items: center;
+    gap: var(--space-md);
+}
+
+.meta-item {
+    font-size: 0.72rem;
+    color: var(--text-tertiary);
+    font-weight: 500;
+}
+
+.meta-settings {
+    font-family: var(--font-mono);
+    color: var(--brand-primary);
+    font-weight: 600;
+}
+
+.meta-time {
+    color: var(--text-secondary);
+}
+
+.meta-size {
+    color: var(--text-tertiary);
+}
+
 /* --- Responsive --- */
 @media (max-width: 1024px) {
     .main-layout {
