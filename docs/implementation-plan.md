@@ -112,12 +112,12 @@ Speksissä on joitain kohtia jotka eivät vastaa FastHTML:n nykyistä API:a:
 **Hyväksyntä:** Testit menevät läpi. Ihminen voi testata oikealla kameralla: kuva tallentuu `data/captures/`-kansioon.
 
 ### 3.2 Kuvan näyttö UI:ssa
-- [ ] Luo `app/components/viewer.py` — `ImageViewer()`-funktio
-- [ ] Luo reitti `GET /images/{filename}` — tarjoilee kuvatiedoston
-- [ ] Luo Capture-nappi UI:hin, joka lähettää `POST /api/capture`
-- [ ] `POST /api/capture` -reitti: ottaa kuvan → palauttaa HTMX-fragmentti (kuva + metadata)
-- [ ] Placeholder "No image captured" kun kuvaa ei ole vielä otettu
-- [ ] Kuvan perusmetadata UI:ssa (tiedostonimi, asetukset, aika)
+- [x] Luo `app/components/viewer.py` — `ImageViewer()`-funktio
+- [x] Luo reitti `GET /captures/{filename}` — tarjoilee kuvatiedoston (Starlette StaticFiles mount)
+- [x] Luo Capture-nappi UI:hin, joka lähettää `POST /api/capture`
+- [x] `POST /api/capture` -reitti: ottaa kuvan → palauttaa HTMX-fragmentti (kuva + metadata)
+- [x] Placeholder "No image captured" kun kuvaa ei ole vielä otettu
+- [x] Kuvan perusmetadata UI:ssa (tiedostonimi, asetukset, aika)
 
 **Hyväksyntä:** Capture-nappi ottaa kuvan → kuva näkyy UI:ssa muutamassa sekunnissa. Metadata näkyy kuvan yhteydessä.
 
