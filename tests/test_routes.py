@@ -320,3 +320,88 @@ def test_capture_error_clears_on_next_success(client, tmp_path):
         response = client.post("/api/capture")
         assert "error-banner" not in response.text
         assert "IMG_20260215_120001.jpg" in response.text
+
+
+# --- History view API tests ---
+
+
+def test_view_capture_not_found(client):
+    """GET /api/capture/999 with empty session → error message."""
+    response = client.get("/api/capture/999")
+    assert response.status_code == 200
+    assert "not found" in response.text
+
+
+def test_view_capture_shows_image(client):
+    """GET /api/capture/{id} shows the stored capture."""
+    from pathlib import Path
+
+    from app.main import session
+    from app.storage.session import CaptureRecord
+
+    record = CaptureRecord(
+        capture_id=0,
+        filename="IMG_test_view.jpg",
+        image_path=Path("/fake/IMG_test_view.jpg"),
+        captured_at="12:00:00",
+        settings_summary="ISO 400 · 1/250 · f/5.6",
+        file_size="2.1 MB",
+        average_brightness=128.0,
+        overexposed_percent=1.0,
+        underexposed_percent=1.0,
+        dynamic_range=10.5,
+        histogram_png="IMG_test_view_hist.png",
+    )
+    session.add(record)
+
+    response = client.get("/api/capture/1")
+    assert response.status_code == 200
+    assert "IMG_test_view.jpg" in response.text
+    assert "ISO 400" in response.text
+
+
+def test_view_capture_highlights_active(client):
+    """GET /api/capture/{id} highlights the active item in history."""
+    from pathlib import Path
+
+    from app.main import session
+    from app.storage.session import CaptureRecord
+
+    session.add(CaptureRecord(
+        capture_id=0,
+        filename="first.jpg",
+        image_path=Path("/fake/first.jpg"),
+    ))
+    session.add(CaptureRecord(
+        capture_id=0,
+        filename="second.jpg",
+        image_path=Path("/fake/second.jpg"),
+    ))
+
+    response = client.get("/api/capture/1")
+    assert response.status_code == 200
+    assert "history-item-active" in response.text
+
+
+def test_view_capture_shows_metrics(client):
+    """GET /api/capture/{id} shows stored analysis metrics."""
+    from pathlib import Path
+
+    from app.main import session
+    from app.storage.session import CaptureRecord
+
+    session.add(CaptureRecord(
+        capture_id=0,
+        filename="analyzed.jpg",
+        image_path=Path("/fake/analyzed.jpg"),
+        average_brightness=200.0,
+        overexposed_percent=8.5,
+        underexposed_percent=0.2,
+        dynamic_range=9.0,
+    ))
+
+    response = client.get("/api/capture/1")
+    assert response.status_code == 200
+    # Metrics should show the stored values
+    assert "200" in response.text
+    assert "8.5%" in response.text

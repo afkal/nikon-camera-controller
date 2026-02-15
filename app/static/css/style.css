@@ -991,9 +991,30 @@ body {
     display: flex;
     align-items: center;
     gap: var(--space-sm);
-    padding: var(--space-xs) 0;
+    padding: var(--space-xs) var(--space-xs);
     border-bottom: 1px solid var(--border-subtle);
-    cursor: default;
+    cursor: pointer;
+    border-radius: var(--radius-xs);
+    transition: background var(--transition-fast);
+}
+
+.history-item:hover {
+    background: var(--surface-hover);
+}
+
+.history-item-active {
+    background: var(--brand-primary-subtle);
+    border-color: var(--border-accent);
+}
+
+.history-item-active .history-id {
+    color: var(--brand-primary);
+}
+
+/* HTMX loading state on history click */
+.history-item.htmx-request {
+    opacity: 0.6;
+    pointer-events: none;
 }
 
 .history-item:last-child {

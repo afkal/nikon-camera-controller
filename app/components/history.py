@@ -5,13 +5,24 @@ from fasthtml.common import Div, Img, P, Span
 from app.storage.session import CaptureRecord
 
 
-def history_item(record: CaptureRecord) -> Div:
-    """Render a single history list item (thumbnail + metadata)."""
+def history_item(
+    record: CaptureRecord,
+    active_id: int | None = None,
+) -> Div:
+    """Render a single history list item (thumbnail + metadata).
+
+    Args:
+        record: The capture record to render.
+        active_id: Currently viewed capture ID (gets highlight).
+    """
     meta_parts = []
     if record.captured_at:
         meta_parts.append(record.captured_at)
     if record.settings_summary:
         meta_parts.append(record.settings_summary)
+
+    is_active = active_id is not None and record.capture_id == active_id
+    item_cls = "history-item history-item-active" if is_active else "history-item"
 
     return Div(
         Div(
@@ -31,12 +42,16 @@ def history_item(record: CaptureRecord) -> Div:
             ),
             cls="history-info",
         ),
-        cls="history-item",
+        cls=item_cls,
+        hx_get=f"/api/capture/{record.capture_id}",
+        hx_target="#preview-panel",
+        hx_swap="outerHTML",
     )
 
 
 def history_panel(
     records: list[CaptureRecord],
+    active_id: int | None = None,
     hx_swap_oob: bool = False,
 ) -> Div:
     """Render the capture history list.
@@ -45,6 +60,7 @@ def history_panel(
 
     Args:
         records: All CaptureRecord objects from the session.
+        active_id: Currently viewed capture ID (gets highlight).
         hx_swap_oob: If True, adds hx-swap-oob for OOB updates.
     """
     attrs: dict = {"id": "history-content", "cls": "section-body"}
@@ -58,7 +74,7 @@ def history_panel(
         )
 
     # Most recent first
-    items = [history_item(r) for r in reversed(records)]
+    items = [history_item(r, active_id=active_id) for r in reversed(records)]
     attrs["cls"] = "section-body history-list"
     return Div(*items, **attrs)
 

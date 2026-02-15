@@ -377,7 +377,11 @@ def post():
             hist_oob,
             metrics_oob,
             advisor_oob,
-            history_panel(session.captures, hx_swap_oob=True),
+            history_panel(
+                session.captures,
+                active_id=record.capture_id,
+                hx_swap_oob=True,
+            ),
             history_badge(session.count, hx_swap_oob=True),
         )
 
@@ -393,6 +397,82 @@ def post():
     except Exception as e:
         logger.exception("Unexpected capture error")
         return _capture_error_response(f"Capture failed: {e}")
+
+
+@rt("/api/capture/{capture_id}")
+def get(capture_id: int):
+    """View a previous capture from session history.
+
+    Returns the preview panel (primary target) plus OOB-swapped
+    histogram, metrics, advisor, and history panels with the
+    selected capture highlighted.
+    """
+    record = session.get(capture_id)
+    if record is None:
+        return preview_panel(
+            connected=camera.connected,
+            error=f"Capture #{capture_id} not found",
+        )
+
+    # Build analysis OOB fragments from stored data
+    hist_oob = histogram_display(hx_swap_oob=True)
+    metrics_oob = metrics_display(hx_swap_oob=True)
+    advisor_oob = advisor_display(hx_swap_oob=True)
+
+    if record.histogram_png:
+        hist_oob = histogram_display(
+            histogram_image=f"/captures/{record.histogram_png}",
+            hx_swap_oob=True,
+        )
+
+    if record.average_brightness is not None:
+        metrics_oob = metrics_display(
+            average_brightness=record.average_brightness,
+            overexposed_percent=record.overexposed_percent,
+            underexposed_percent=record.underexposed_percent,
+            dynamic_range=record.dynamic_range,
+            hx_swap_oob=True,
+        )
+
+        # Re-generate suggestions from stored analysis
+        settings_parts = record.settings_summary.split(" · ")
+        current_iso = ""
+        current_shutter = ""
+        for part in settings_parts:
+            if part.startswith("ISO "):
+                current_iso = part.replace("ISO ", "")
+            elif "/" in part and not part.startswith("f/"):
+                current_shutter = part
+
+        suggestions = get_suggestions(
+            average_brightness=record.average_brightness,
+            overexposed_percent=record.overexposed_percent or 0.0,
+            underexposed_percent=record.underexposed_percent or 0.0,
+            current_iso=current_iso,
+            current_shutter=current_shutter,
+        )
+        advisor_oob = advisor_display(
+            suggestions=suggestions,
+            hx_swap_oob=True,
+        )
+
+    return (
+        preview_panel(
+            connected=camera.connected,
+            filename=record.filename,
+            settings_summary=record.settings_summary,
+            captured_at=record.captured_at,
+            file_size=record.file_size,
+        ),
+        hist_oob,
+        metrics_oob,
+        advisor_oob,
+        history_panel(
+            session.captures,
+            active_id=capture_id,
+            hx_swap_oob=True,
+        ),
+    )
 
 
 def _capture_error_response(error: str):
