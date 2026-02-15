@@ -202,10 +202,10 @@ Speksissä on joitain kohtia jotka eivät vastaa FastHTML:n nykyistä API:a:
 **Hyväksyntä:** Ihminen arvioi UI:n käytettävyyden kokonaisuutena.
 
 ### 6.2 Testien kattavuus ja laatu
-- [ ] Varmista testikattavuus: kaikki ydinkomponentit katettu
-- [ ] Integraatiotesti: connect → set settings → capture → analyze → historia
-- [ ] Aja `ruff check app/` — ei virheitä
-- [ ] Aja `mypy app/` — ei type-virheitä (tai dokumentoidut poikkeukset)
+- [x] Varmista testikattavuus: kaikki ydinkomponentit katettu
+- [x] Integraatiotesti: connect → set settings → capture → analyze → historia
+- [x] Aja `ruff check app/` — ei virheitä
+- [x] Aja `mypy app/` — ei type-virheitä (tai dokumentoidut poikkeukset)
 
 **Hyväksyntä:** `pytest tests/` — kaikki vihreää. `ruff` ja `mypy` puhtaat.
 
