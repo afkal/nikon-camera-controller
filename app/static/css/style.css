@@ -125,30 +125,13 @@ body {
     gap: var(--space-sm);
 }
 
-.logo-icon {
-    width: 26px;
-    height: 26px;
-    border-radius: var(--radius-xs);
-    background: var(--brand-primary);
-    position: relative;
-    flex-shrink: 0;
-}
-
-/* Camera lens ring */
-.logo-icon::after {
-    content: '';
-    position: absolute;
-    inset: 5px;
-    border-radius: 50%;
-    border: 1.5px solid rgba(26, 26, 26, 0.7);
-    background: radial-gradient(circle, rgba(26, 26, 26, 0.5) 30%, transparent 70%);
-}
-
 .header-brand h1 {
     font-size: 0.93rem;
     font-weight: 700;
     letter-spacing: 0.04em;
     color: var(--text-primary);
+    margin: 0;
+    line-height: 1;
 }
 
 .header-subtitle {

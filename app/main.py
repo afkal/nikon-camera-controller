@@ -102,7 +102,6 @@ def get():
         Header(
             Div(
                 Div(
-                    Span(cls="logo-icon"),
                     H1("NCC"),
                     Span("Nikon Camera Controller", cls="header-subtitle"),
                     cls="header-brand",
