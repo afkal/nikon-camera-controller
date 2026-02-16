@@ -4,7 +4,11 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 
-from app.camera.controller import CameraController
+from app.camera.controller import (
+    CameraController,
+    _match_nearest_value,
+    _parse_numeric,
+)
 from app.camera.exceptions import (
     CameraAlreadyConnectedError,
     CameraConnectionError,
@@ -576,3 +580,72 @@ class TestCapture:
 
         with pytest.raises(CaptureError, match="Failed to capture"):
             connected_controller.capture(captures_dir=tmp_path)
+
+
+# --- _parse_numeric tests ---
+
+
+class TestParseNumeric:
+    """Tests for _parse_numeric helper."""
+
+    def test_plain_integer(self) -> None:
+        assert _parse_numeric("400") == 400.0
+
+    def test_plain_float(self) -> None:
+        assert _parse_numeric("5.6") == 5.6
+
+    def test_shutter_speed_with_suffix(self) -> None:
+        assert _parse_numeric("0.6250s") == 0.625
+
+    def test_fraction(self) -> None:
+        assert _parse_numeric("1/250") == pytest.approx(1 / 250)
+
+    def test_f_number(self) -> None:
+        assert _parse_numeric("f/5.6") == pytest.approx(5.6)
+
+    def test_no_number(self) -> None:
+        assert _parse_numeric("Auto") is None
+
+    def test_empty_string(self) -> None:
+        assert _parse_numeric("") is None
+
+
+# --- _match_nearest_value tests ---
+
+
+class TestMatchNearestValue:
+    """Tests for _match_nearest_value helper."""
+
+    def test_exact_match(self) -> None:
+        choices = ["0.0001s", "0.0002s", "0.6250s", "1.0000s"]
+        assert _match_nearest_value("0.6250s", choices) == "0.6250s"
+
+    def test_exif_shutter_to_gphoto2(self) -> None:
+        """EXIF '0.6s' should match gPhoto2 '0.6250s' (within 5%)."""
+        choices = ["0.0001s", "0.0002s", "0.5000s", "0.6250s", "0.7692s"]
+        assert _match_nearest_value("0.6s", choices) == "0.6250s"
+
+    def test_fraction_to_decimal(self) -> None:
+        """EXIF '1/250' should match gPhoto2 '0.0040s'."""
+        choices = ["0.0031s", "0.0040s", "0.0050s", "0.0062s"]
+        assert _match_nearest_value("1/250", choices) == "0.0040s"
+
+    def test_iso_exact(self) -> None:
+        choices = ["100", "200", "400", "800"]
+        assert _match_nearest_value("400", choices) == "400"
+
+    def test_f_number(self) -> None:
+        choices = ["f/3.5", "f/5.6", "f/8", "f/11"]
+        assert _match_nearest_value("f/5.6", choices) == "f/5.6"
+
+    def test_no_numeric_value(self) -> None:
+        choices = ["Auto", "Daylight", "Cloudy"]
+        assert _match_nearest_value("Fluorescent", choices) is None
+
+    def test_too_far_off_returns_none(self) -> None:
+        """Value more than 20% off should not match."""
+        choices = ["0.0001s", "0.0002s", "30.0000s"]
+        assert _match_nearest_value("0.6s", choices) is None
+
+    def test_empty_choices(self) -> None:
+        assert _match_nearest_value("400", []) is None

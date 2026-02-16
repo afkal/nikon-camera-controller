@@ -2,6 +2,7 @@
 
 import logging
 import platform
+import re
 import subprocess
 import time
 from pathlib import Path
@@ -22,6 +23,66 @@ from app.camera.settings import CameraSettings
 from app.storage.files import get_capture_path
 
 logger = logging.getLogger(__name__)
+
+# Regex to parse numeric values from setting strings like "0.6s", "1/250",
+# "f/5.6", "400", etc.
+_NUM_RE = re.compile(r"[\d.]+(?:/[\d.]+)?")
+
+
+def _parse_numeric(value: str) -> float | None:
+    """Extract a numeric value from a setting string.
+
+    Handles formats: "0.6s", "1/250", "f/5.6", "400", "0.0015s".
+    Returns None if no number can be parsed.
+    """
+    m = _NUM_RE.search(value)
+    if m is None:
+        return None
+    text = m.group()
+    try:
+        if "/" in text:
+            num, den = text.split("/", 1)
+            return float(num) / float(den)
+        return float(text)
+    except (ValueError, ZeroDivisionError):
+        return None
+
+
+def _match_nearest_value(
+    value: str, choices: list[str]
+) -> str | None:
+    """Find the nearest matching choice for a setting value.
+
+    Compares the numeric component of ``value`` against each choice.
+    Returns the closest match, or None if ``value`` has no numeric part
+    or no choices have numeric parts.
+    """
+    target = _parse_numeric(value)
+    if target is None:
+        return None
+
+    best: str | None = None
+    best_ratio = float("inf")
+
+    for choice in choices:
+        cval = _parse_numeric(choice)
+        if cval is None:
+            continue
+        # Use ratio distance for values spanning many orders of magnitude
+        # (e.g. shutter speeds from 0.0001s to 30s).
+        if cval == 0 and target == 0:
+            return choice
+        if cval == 0:
+            continue
+        ratio = abs(target / cval - 1.0)
+        if ratio < best_ratio:
+            best_ratio = ratio
+            best = choice
+
+    # Only accept if within 20% — avoids wildly wrong matches
+    if best is not None and best_ratio <= 0.2:
+        return best
+    return None
 
 
 class CameraController:
@@ -292,10 +353,22 @@ class CameraController:
                     for i in range(widget.count_choices())
                 ]
                 if value not in choices:
-                    raise InvalidSettingError(
-                        f"Invalid value '{value}' for {field_name}. "
-                        f"Valid: {choices[:10]}..."
-                    )
+                    # Try matching nearest numeric value (e.g. EXIF
+                    # "0.6s" → gPhoto2 "0.6250s")
+                    matched = _match_nearest_value(value, choices)
+                    if matched is not None:
+                        value = matched
+                        logger.info(
+                            "Matched %s value '%s' → '%s'",
+                            field_name,
+                            kwargs[field_name],
+                            matched,
+                        )
+                    else:
+                        raise InvalidSettingError(
+                            f"Invalid value '{value}' for {field_name}. "
+                            f"Valid: {choices[:10]}..."
+                        )
 
             try:
                 widget.set_value(value)
